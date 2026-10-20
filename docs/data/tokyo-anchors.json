@@ -1,0 +1,2457 @@
+{
+ "source": "駅座標は ekidata.jp 由来の公開データ（piuccio/open-data-jp-railway-stations, 2018）＋ 虎ノ門ヒルズ（手入力・要確認）。順序は docs/03-spec-tokyo-pack.md §7 と同じ。",
+ "anchors": [
+  {
+   "index": 0,
+   "name": "浅草",
+   "codes": [
+    "G19",
+    "A-18"
+   ],
+   "lat": 35.7107,
+   "lon": 139.7976,
+   "corridor": "start",
+   "kind": "new"
+  },
+  {
+   "index": 1,
+   "name": "田原町",
+   "codes": [
+    "G18"
+   ],
+   "lat": 35.7099,
+   "lon": 139.7909,
+   "corridor": "start",
+   "kind": "new"
+  },
+  {
+   "index": 2,
+   "name": "稲荷町",
+   "codes": [
+    "G17"
+   ],
+   "lat": 35.7113,
+   "lon": 139.7826,
+   "corridor": "start",
+   "kind": "new"
+  },
+  {
+   "index": 3,
+   "name": "上野",
+   "codes": [
+    "G16",
+    "H17"
+   ],
+   "lat": 35.7115,
+   "lon": 139.7771,
+   "corridor": "g-south",
+   "kind": "new"
+  },
+  {
+   "index": 4,
+   "name": "上野広小路",
+   "codes": [
+    "G15"
+   ],
+   "lat": 35.7077,
+   "lon": 139.7729,
+   "corridor": "g-south",
+   "kind": "new"
+  },
+  {
+   "index": 5,
+   "name": "末広町",
+   "codes": [
+    "G14"
+   ],
+   "lat": 35.703,
+   "lon": 139.7717,
+   "corridor": "g-south",
+   "kind": "new"
+  },
+  {
+   "index": 6,
+   "name": "神田",
+   "codes": [
+    "G13"
+   ],
+   "lat": 35.6936,
+   "lon": 139.7709,
+   "corridor": "g-south",
+   "kind": "new"
+  },
+  {
+   "index": 7,
+   "name": "三越前",
+   "codes": [
+    "G12",
+    "Z09"
+   ],
+   "lat": 35.6871,
+   "lon": 139.7736,
+   "corridor": "g-south",
+   "kind": "new"
+  },
+  {
+   "index": 8,
+   "name": "日本橋",
+   "codes": [
+    "G11",
+    "A-13",
+    "T10"
+   ],
+   "lat": 35.6821,
+   "lon": 139.7735,
+   "corridor": "g-south",
+   "kind": "new"
+  },
+  {
+   "index": 9,
+   "name": "京橋",
+   "codes": [
+    "G10"
+   ],
+   "lat": 35.6769,
+   "lon": 139.7701,
+   "corridor": "g-south",
+   "kind": "new"
+  },
+  {
+   "index": 10,
+   "name": "銀座",
+   "codes": [
+    "M16",
+    "G09",
+    "H08"
+   ],
+   "lat": 35.672,
+   "lon": 139.764,
+   "corridor": "g-south",
+   "kind": "new"
+  },
+  {
+   "index": 11,
+   "name": "新橋",
+   "codes": [
+    "G08",
+    "A-10"
+   ],
+   "lat": 35.6674,
+   "lon": 139.7584,
+   "corridor": "g-south",
+   "kind": "new"
+  },
+  {
+   "index": 12,
+   "name": "渋谷",
+   "codes": [
+    "G01",
+    "Z01",
+    "F16"
+   ],
+   "lat": 35.6591,
+   "lon": 139.701,
+   "corridor": "g-west",
+   "kind": "new"
+  },
+  {
+   "index": 13,
+   "name": "表参道",
+   "codes": [
+    "G02",
+    "Z02",
+    "C04"
+   ],
+   "lat": 35.6652,
+   "lon": 139.7123,
+   "corridor": "g-west",
+   "kind": "new"
+  },
+  {
+   "index": 14,
+   "name": "外苑前",
+   "codes": [
+    "G03"
+   ],
+   "lat": 35.6705,
+   "lon": 139.7179,
+   "corridor": "g-west",
+   "kind": "new"
+  },
+  {
+   "index": 15,
+   "name": "青山一丁目",
+   "codes": [
+    "G04",
+    "Z03",
+    "E-24"
+   ],
+   "lat": 35.6728,
+   "lon": 139.7242,
+   "corridor": "g-west",
+   "kind": "new"
+  },
+  {
+   "index": 16,
+   "name": "赤坂見附",
+   "codes": [
+    "M13",
+    "G05"
+   ],
+   "lat": 35.677,
+   "lon": 139.737,
+   "corridor": "g-west",
+   "kind": "new"
+  },
+  {
+   "index": 17,
+   "name": "溜池山王",
+   "codes": [
+    "G06",
+    "N06"
+   ],
+   "lat": 35.6736,
+   "lon": 139.7414,
+   "corridor": "g-west",
+   "kind": "infill"
+  },
+  {
+   "index": 18,
+   "name": "虎ノ門",
+   "codes": [
+    "G07"
+   ],
+   "lat": 35.6702,
+   "lon": 139.7498,
+   "corridor": "g-west",
+   "kind": "new"
+  },
+  {
+   "index": 19,
+   "name": "池袋",
+   "codes": [
+    "M25",
+    "F09",
+    "Y09"
+   ],
+   "lat": 35.7303,
+   "lon": 139.7111,
+   "corridor": "m-main",
+   "kind": "new"
+  },
+  {
+   "index": 20,
+   "name": "新大塚",
+   "codes": [
+    "M24"
+   ],
+   "lat": 35.7257,
+   "lon": 139.73,
+   "corridor": "m-main",
+   "kind": "new"
+  },
+  {
+   "index": 21,
+   "name": "茗荷谷",
+   "codes": [
+    "M23"
+   ],
+   "lat": 35.717,
+   "lon": 139.7372,
+   "corridor": "m-main",
+   "kind": "new"
+  },
+  {
+   "index": 22,
+   "name": "後楽園",
+   "codes": [
+    "M22",
+    "N11"
+   ],
+   "lat": 35.7079,
+   "lon": 139.7519,
+   "corridor": "m-main",
+   "kind": "new"
+  },
+  {
+   "index": 23,
+   "name": "本郷三丁目",
+   "codes": [
+    "M21",
+    "E-08"
+   ],
+   "lat": 35.7067,
+   "lon": 139.7599,
+   "corridor": "m-main",
+   "kind": "new"
+  },
+  {
+   "index": 24,
+   "name": "御茶ノ水",
+   "codes": [
+    "M20"
+   ],
+   "lat": 35.7006,
+   "lon": 139.764,
+   "corridor": "m-main",
+   "kind": "new"
+  },
+  {
+   "index": 25,
+   "name": "淡路町",
+   "codes": [
+    "M19"
+   ],
+   "lat": 35.6954,
+   "lon": 139.7676,
+   "corridor": "m-main",
+   "kind": "new"
+  },
+  {
+   "index": 26,
+   "name": "大手町",
+   "codes": [
+    "M18",
+    "I-09",
+    "Z08",
+    "C11",
+    "T09"
+   ],
+   "lat": 35.6866,
+   "lon": 139.7662,
+   "corridor": "m-main",
+   "kind": "new"
+  },
+  {
+   "index": 27,
+   "name": "東京",
+   "codes": [
+    "M17"
+   ],
+   "lat": 35.6818,
+   "lon": 139.7647,
+   "corridor": "m-main",
+   "kind": "new"
+  },
+  {
+   "index": 28,
+   "name": "霞ケ関",
+   "codes": [
+    "M15",
+    "H06",
+    "C08"
+   ],
+   "lat": 35.6738,
+   "lon": 139.7509,
+   "corridor": "m-main",
+   "kind": "new"
+  },
+  {
+   "index": 29,
+   "name": "国会議事堂前",
+   "codes": [
+    "M14",
+    "C07"
+   ],
+   "lat": 35.6739,
+   "lon": 139.7452,
+   "corridor": "m-main",
+   "kind": "new"
+  },
+  {
+   "index": 30,
+   "name": "四ツ谷",
+   "codes": [
+    "M12",
+    "N08"
+   ],
+   "lat": 35.6846,
+   "lon": 139.7299,
+   "corridor": "m-main",
+   "kind": "new"
+  },
+  {
+   "index": 31,
+   "name": "四谷三丁目",
+   "codes": [
+    "M11"
+   ],
+   "lat": 35.688,
+   "lon": 139.7201,
+   "corridor": "m-main",
+   "kind": "new"
+  },
+  {
+   "index": 32,
+   "name": "新宿御苑前",
+   "codes": [
+    "M10"
+   ],
+   "lat": 35.6886,
+   "lon": 139.7107,
+   "corridor": "m-main",
+   "kind": "new"
+  },
+  {
+   "index": 33,
+   "name": "新宿三丁目",
+   "codes": [
+    "M09",
+    "F13",
+    "S-02"
+   ],
+   "lat": 35.6908,
+   "lon": 139.7049,
+   "corridor": "m-main",
+   "kind": "new"
+  },
+  {
+   "index": 34,
+   "name": "新宿",
+   "codes": [
+    "M08",
+    "E-27",
+    "S-01"
+   ],
+   "lat": 35.6923,
+   "lon": 139.7007,
+   "corridor": "m-main",
+   "kind": "new"
+  },
+  {
+   "index": 35,
+   "name": "西新宿",
+   "codes": [
+    "M07"
+   ],
+   "lat": 35.6943,
+   "lon": 139.6928,
+   "corridor": "m-west",
+   "kind": "infill"
+  },
+  {
+   "index": 36,
+   "name": "中野坂上",
+   "codes": [
+    "M06",
+    "E-30",
+    "M06"
+   ],
+   "lat": 35.6979,
+   "lon": 139.6829,
+   "corridor": "m-west",
+   "kind": "new"
+  },
+  {
+   "index": 37,
+   "name": "新中野",
+   "codes": [
+    "M05"
+   ],
+   "lat": 35.6975,
+   "lon": 139.669,
+   "corridor": "m-west",
+   "kind": "new"
+  },
+  {
+   "index": 38,
+   "name": "東高円寺",
+   "codes": [
+    "M04"
+   ],
+   "lat": 35.6978,
+   "lon": 139.6578,
+   "corridor": "m-west",
+   "kind": "new"
+  },
+  {
+   "index": 39,
+   "name": "新高円寺",
+   "codes": [
+    "M03"
+   ],
+   "lat": 35.698,
+   "lon": 139.6481,
+   "corridor": "m-west",
+   "kind": "new"
+  },
+  {
+   "index": 40,
+   "name": "南阿佐ケ谷",
+   "codes": [
+    "M02"
+   ],
+   "lat": 35.6996,
+   "lon": 139.6358,
+   "corridor": "m-west",
+   "kind": "new"
+  },
+  {
+   "index": 41,
+   "name": "荻窪",
+   "codes": [
+    "M01"
+   ],
+   "lat": 35.7043,
+   "lon": 139.6201,
+   "corridor": "m-west",
+   "kind": "new"
+  },
+  {
+   "index": 42,
+   "name": "中野新橋",
+   "codes": [
+    "Mb05"
+   ],
+   "lat": 35.6921,
+   "lon": 139.674,
+   "corridor": "m-branch",
+   "kind": "new"
+  },
+  {
+   "index": 43,
+   "name": "中野富士見町",
+   "codes": [
+    "Mb04"
+   ],
+   "lat": 35.6905,
+   "lon": 139.6669,
+   "corridor": "m-branch",
+   "kind": "new"
+  },
+  {
+   "index": 44,
+   "name": "方南町",
+   "codes": [
+    "Mb03"
+   ],
+   "lat": 35.6835,
+   "lon": 139.6565,
+   "corridor": "m-branch",
+   "kind": "new"
+  },
+  {
+   "index": 45,
+   "name": "押上",
+   "codes": [
+    "A-20",
+    "Z14"
+   ],
+   "lat": 35.7107,
+   "lon": 139.8129,
+   "corridor": "a-east",
+   "kind": "new"
+  },
+  {
+   "index": 46,
+   "name": "本所吾妻橋",
+   "codes": [
+    "A-19"
+   ],
+   "lat": 35.7086,
+   "lon": 139.8046,
+   "corridor": "a-east",
+   "kind": "new"
+  },
+  {
+   "index": 47,
+   "name": "蔵前",
+   "codes": [
+    "A-17",
+    "E-11"
+   ],
+   "lat": 35.7032,
+   "lon": 139.7909,
+   "corridor": "a-east",
+   "kind": "new"
+  },
+  {
+   "index": 48,
+   "name": "浅草橋",
+   "codes": [
+    "A-16"
+   ],
+   "lat": 35.6975,
+   "lon": 139.7863,
+   "corridor": "a-east",
+   "kind": "new"
+  },
+  {
+   "index": 49,
+   "name": "東日本橋",
+   "codes": [
+    "A-15"
+   ],
+   "lat": 35.6921,
+   "lon": 139.7848,
+   "corridor": "a-south",
+   "kind": "new"
+  },
+  {
+   "index": 50,
+   "name": "人形町",
+   "codes": [
+    "A-14",
+    "H13"
+   ],
+   "lat": 35.6863,
+   "lon": 139.7823,
+   "corridor": "a-south",
+   "kind": "new"
+  },
+  {
+   "index": 51,
+   "name": "宝町",
+   "codes": [
+    "A-12"
+   ],
+   "lat": 35.6755,
+   "lon": 139.7718,
+   "corridor": "a-south",
+   "kind": "new"
+  },
+  {
+   "index": 52,
+   "name": "東銀座",
+   "codes": [
+    "A-11",
+    "H09"
+   ],
+   "lat": 35.6695,
+   "lon": 139.7673,
+   "corridor": "a-south",
+   "kind": "new"
+  },
+  {
+   "index": 53,
+   "name": "大門",
+   "codes": [
+    "A-09",
+    "E-20"
+   ],
+   "lat": 35.6568,
+   "lon": 139.7547,
+   "corridor": "a-south",
+   "kind": "new"
+  },
+  {
+   "index": 54,
+   "name": "三田",
+   "codes": [
+    "A-08",
+    "I-04"
+   ],
+   "lat": 35.6482,
+   "lon": 139.7488,
+   "corridor": "a-south",
+   "kind": "new"
+  },
+  {
+   "index": 55,
+   "name": "泉岳寺",
+   "codes": [
+    "A-07"
+   ],
+   "lat": 35.6387,
+   "lon": 139.74,
+   "corridor": "a-south",
+   "kind": "new"
+  },
+  {
+   "index": 56,
+   "name": "高輪台",
+   "codes": [
+    "A-06"
+   ],
+   "lat": 35.6317,
+   "lon": 139.7303,
+   "corridor": "a-south",
+   "kind": "new"
+  },
+  {
+   "index": 57,
+   "name": "五反田",
+   "codes": [
+    "A-05"
+   ],
+   "lat": 35.6271,
+   "lon": 139.7242,
+   "corridor": "a-south",
+   "kind": "new"
+  },
+  {
+   "index": 58,
+   "name": "戸越",
+   "codes": [
+    "A-04"
+   ],
+   "lat": 35.6146,
+   "lon": 139.7165,
+   "corridor": "a-south",
+   "kind": "new"
+  },
+  {
+   "index": 59,
+   "name": "中延",
+   "codes": [
+    "A-03"
+   ],
+   "lat": 35.6058,
+   "lon": 139.7137,
+   "corridor": "a-south",
+   "kind": "new"
+  },
+  {
+   "index": 60,
+   "name": "馬込",
+   "codes": [
+    "A-02"
+   ],
+   "lat": 35.5964,
+   "lon": 139.7118,
+   "corridor": "a-south",
+   "kind": "new"
+  },
+  {
+   "index": 61,
+   "name": "西馬込",
+   "codes": [
+    "A-01"
+   ],
+   "lat": 35.5869,
+   "lon": 139.7059,
+   "corridor": "a-south",
+   "kind": "new"
+  },
+  {
+   "index": 62,
+   "name": "北千住",
+   "codes": [
+    "H21",
+    "C18"
+   ],
+   "lat": 35.7489,
+   "lon": 139.8043,
+   "corridor": "h-north",
+   "kind": "new"
+  },
+  {
+   "index": 63,
+   "name": "南千住",
+   "codes": [
+    "H20"
+   ],
+   "lat": 35.7334,
+   "lon": 139.7993,
+   "corridor": "h-south (seed)",
+   "kind": "seed"
+  },
+  {
+   "index": 64,
+   "name": "三ノ輪",
+   "codes": [
+    "H19"
+   ],
+   "lat": 35.7296,
+   "lon": 139.7915,
+   "corridor": "h-south (seed)",
+   "kind": "seed"
+  },
+  {
+   "index": 65,
+   "name": "入谷",
+   "codes": [
+    "H18"
+   ],
+   "lat": 35.7199,
+   "lon": 139.7839,
+   "corridor": "h-south",
+   "kind": "new"
+  },
+  {
+   "index": 66,
+   "name": "仲御徒町",
+   "codes": [
+    "H16"
+   ],
+   "lat": 35.7066,
+   "lon": 139.7761,
+   "corridor": "h-south",
+   "kind": "new"
+  },
+  {
+   "index": 67,
+   "name": "秋葉原",
+   "codes": [
+    "H15"
+   ],
+   "lat": 35.6982,
+   "lon": 139.7755,
+   "corridor": "h-south",
+   "kind": "new"
+  },
+  {
+   "index": 68,
+   "name": "小伝馬町",
+   "codes": [
+    "H14"
+   ],
+   "lat": 35.6907,
+   "lon": 139.7784,
+   "corridor": "h-south",
+   "kind": "new"
+  },
+  {
+   "index": 69,
+   "name": "茅場町",
+   "codes": [
+    "H12",
+    "T11"
+   ],
+   "lat": 35.6798,
+   "lon": 139.78,
+   "corridor": "h-south",
+   "kind": "new"
+  },
+  {
+   "index": 70,
+   "name": "八丁堀",
+   "codes": [
+    "H11"
+   ],
+   "lat": 35.6749,
+   "lon": 139.777,
+   "corridor": "h-south",
+   "kind": "new"
+  },
+  {
+   "index": 71,
+   "name": "築地",
+   "codes": [
+    "H10"
+   ],
+   "lat": 35.6681,
+   "lon": 139.7726,
+   "corridor": "h-south",
+   "kind": "new"
+  },
+  {
+   "index": 72,
+   "name": "日比谷",
+   "codes": [
+    "I-08",
+    "H07",
+    "C09"
+   ],
+   "lat": 35.676,
+   "lon": 139.76,
+   "corridor": "h-south",
+   "kind": "new"
+  },
+  {
+   "index": 73,
+   "name": "虎ノ門ヒルズ",
+   "codes": [
+    "H06"
+   ],
+   "lat": 35.6677,
+   "lon": 139.7497,
+   "corridor": "h-south",
+   "kind": "infill"
+  },
+  {
+   "index": 74,
+   "name": "神谷町",
+   "codes": [
+    "H05"
+   ],
+   "lat": 35.663,
+   "lon": 139.7451,
+   "corridor": "h-south",
+   "kind": "new"
+  },
+  {
+   "index": 75,
+   "name": "六本木",
+   "codes": [
+    "H04",
+    "E-23"
+   ],
+   "lat": 35.6628,
+   "lon": 139.7314,
+   "corridor": "h-south",
+   "kind": "new"
+  },
+  {
+   "index": 76,
+   "name": "広尾",
+   "codes": [
+    "H03"
+   ],
+   "lat": 35.6523,
+   "lon": 139.7222,
+   "corridor": "h-south",
+   "kind": "new"
+  },
+  {
+   "index": 77,
+   "name": "恵比寿",
+   "codes": [
+    "H02"
+   ],
+   "lat": 35.6473,
+   "lon": 139.709,
+   "corridor": "h-south",
+   "kind": "new"
+  },
+  {
+   "index": 78,
+   "name": "中目黒",
+   "codes": [
+    "H01"
+   ],
+   "lat": 35.6439,
+   "lon": 139.6986,
+   "corridor": "h-south",
+   "kind": "new"
+  },
+  {
+   "index": 79,
+   "name": "高田馬場",
+   "codes": [
+    "T03"
+   ],
+   "lat": 35.7133,
+   "lon": 139.7047,
+   "corridor": "t-east (seed)",
+   "kind": "seed"
+  },
+  {
+   "index": 80,
+   "name": "早稲田",
+   "codes": [
+    "T04"
+   ],
+   "lat": 35.7057,
+   "lon": 139.7213,
+   "corridor": "t-east (seed)",
+   "kind": "seed"
+  },
+  {
+   "index": 81,
+   "name": "神楽坂",
+   "codes": [
+    "T05"
+   ],
+   "lat": 35.7038,
+   "lon": 139.7345,
+   "corridor": "t-east",
+   "kind": "new"
+  },
+  {
+   "index": 82,
+   "name": "飯田橋",
+   "codes": [
+    "N10",
+    "E-06",
+    "T06",
+    "Y13"
+   ],
+   "lat": 35.7019,
+   "lon": 139.7437,
+   "corridor": "t-east",
+   "kind": "new"
+  },
+  {
+   "index": 83,
+   "name": "九段下",
+   "codes": [
+    "Z06",
+    "S-05",
+    "T07"
+   ],
+   "lat": 35.6956,
+   "lon": 139.7519,
+   "corridor": "t-east",
+   "kind": "new"
+  },
+  {
+   "index": 84,
+   "name": "竹橋",
+   "codes": [
+    "T08"
+   ],
+   "lat": 35.6907,
+   "lon": 139.7568,
+   "corridor": "t-east",
+   "kind": "new"
+  },
+  {
+   "index": 85,
+   "name": "門前仲町",
+   "codes": [
+    "E-15",
+    "T12"
+   ],
+   "lat": 35.6719,
+   "lon": 139.7962,
+   "corridor": "t-east",
+   "kind": "new"
+  },
+  {
+   "index": 86,
+   "name": "木場",
+   "codes": [
+    "T13"
+   ],
+   "lat": 35.6694,
+   "lon": 139.807,
+   "corridor": "t-east",
+   "kind": "new"
+  },
+  {
+   "index": 87,
+   "name": "東陽町",
+   "codes": [
+    "T14"
+   ],
+   "lat": 35.6696,
+   "lon": 139.8176,
+   "corridor": "t-east",
+   "kind": "new"
+  },
+  {
+   "index": 88,
+   "name": "南砂町",
+   "codes": [
+    "T15"
+   ],
+   "lat": 35.6688,
+   "lon": 139.8306,
+   "corridor": "t-east",
+   "kind": "new"
+  },
+  {
+   "index": 89,
+   "name": "西葛西",
+   "codes": [
+    "T16"
+   ],
+   "lat": 35.6646,
+   "lon": 139.8593,
+   "corridor": "t-east",
+   "kind": "infill"
+  },
+  {
+   "index": 90,
+   "name": "葛西",
+   "codes": [
+    "T17"
+   ],
+   "lat": 35.6636,
+   "lon": 139.8725,
+   "corridor": "t-east",
+   "kind": "new"
+  },
+  {
+   "index": 91,
+   "name": "浦安",
+   "codes": [
+    "T18"
+   ],
+   "lat": 35.6659,
+   "lon": 139.8932,
+   "corridor": "t-east",
+   "kind": "new"
+  },
+  {
+   "index": 92,
+   "name": "南行徳",
+   "codes": [
+    "T19"
+   ],
+   "lat": 35.6727,
+   "lon": 139.9023,
+   "corridor": "t-east",
+   "kind": "infill"
+  },
+  {
+   "index": 93,
+   "name": "行徳",
+   "codes": [
+    "T20"
+   ],
+   "lat": 35.6827,
+   "lon": 139.9143,
+   "corridor": "t-east",
+   "kind": "new"
+  },
+  {
+   "index": 94,
+   "name": "妙典",
+   "codes": [
+    "T21"
+   ],
+   "lat": 35.6909,
+   "lon": 139.9242,
+   "corridor": "t-east",
+   "kind": "infill"
+  },
+  {
+   "index": 95,
+   "name": "原木中山",
+   "codes": [
+    "T22"
+   ],
+   "lat": 35.7035,
+   "lon": 139.942,
+   "corridor": "t-east",
+   "kind": "new"
+  },
+  {
+   "index": 96,
+   "name": "西船橋",
+   "codes": [
+    "T23"
+   ],
+   "lat": 35.7071,
+   "lon": 139.959,
+   "corridor": "t-east",
+   "kind": "new"
+  },
+  {
+   "index": 97,
+   "name": "落合",
+   "codes": [
+    "T02"
+   ],
+   "lat": 35.711,
+   "lon": 139.6873,
+   "corridor": "t-west",
+   "kind": "new"
+  },
+  {
+   "index": 98,
+   "name": "中野",
+   "codes": [
+    "T01"
+   ],
+   "lat": 35.7058,
+   "lon": 139.6658,
+   "corridor": "t-west",
+   "kind": "new"
+  },
+  {
+   "index": 99,
+   "name": "巣鴨",
+   "codes": [
+    "I-15"
+   ],
+   "lat": 35.7335,
+   "lon": 139.7385,
+   "corridor": "i-north (seed)",
+   "kind": "seed"
+  },
+  {
+   "index": 100,
+   "name": "西巣鴨",
+   "codes": [
+    "I-16"
+   ],
+   "lat": 35.7435,
+   "lon": 139.7287,
+   "corridor": "i-north (seed)",
+   "kind": "seed"
+  },
+  {
+   "index": 101,
+   "name": "新板橋",
+   "codes": [
+    "I-17"
+   ],
+   "lat": 35.7488,
+   "lon": 139.7201,
+   "corridor": "i-north",
+   "kind": "new"
+  },
+  {
+   "index": 102,
+   "name": "板橋区役所前",
+   "codes": [
+    "I-18"
+   ],
+   "lat": 35.7513,
+   "lon": 139.7101,
+   "corridor": "i-north",
+   "kind": "new"
+  },
+  {
+   "index": 103,
+   "name": "板橋本町",
+   "codes": [
+    "I-19"
+   ],
+   "lat": 35.7613,
+   "lon": 139.7055,
+   "corridor": "i-north",
+   "kind": "new"
+  },
+  {
+   "index": 104,
+   "name": "本蓮沼",
+   "codes": [
+    "I-20"
+   ],
+   "lat": 35.7688,
+   "lon": 139.7023,
+   "corridor": "i-north",
+   "kind": "new"
+  },
+  {
+   "index": 105,
+   "name": "志村坂上",
+   "codes": [
+    "I-21"
+   ],
+   "lat": 35.7757,
+   "lon": 139.6954,
+   "corridor": "i-north",
+   "kind": "new"
+  },
+  {
+   "index": 106,
+   "name": "志村三丁目",
+   "codes": [
+    "I-22"
+   ],
+   "lat": 35.7774,
+   "lon": 139.6859,
+   "corridor": "i-north",
+   "kind": "new"
+  },
+  {
+   "index": 107,
+   "name": "蓮根",
+   "codes": [
+    "I-23"
+   ],
+   "lat": 35.7843,
+   "lon": 139.679,
+   "corridor": "i-north",
+   "kind": "new"
+  },
+  {
+   "index": 108,
+   "name": "西台",
+   "codes": [
+    "I-24"
+   ],
+   "lat": 35.787,
+   "lon": 139.674,
+   "corridor": "i-north",
+   "kind": "new"
+  },
+  {
+   "index": 109,
+   "name": "高島平",
+   "codes": [
+    "I-25"
+   ],
+   "lat": 35.7891,
+   "lon": 139.6612,
+   "corridor": "i-north",
+   "kind": "new"
+  },
+  {
+   "index": 110,
+   "name": "新高島平",
+   "codes": [
+    "I-26"
+   ],
+   "lat": 35.7902,
+   "lon": 139.6543,
+   "corridor": "i-north",
+   "kind": "new"
+  },
+  {
+   "index": 111,
+   "name": "西高島平",
+   "codes": [
+    "I-27"
+   ],
+   "lat": 35.7918,
+   "lon": 139.6459,
+   "corridor": "i-north",
+   "kind": "new"
+  },
+  {
+   "index": 112,
+   "name": "千石",
+   "codes": [
+    "I-14"
+   ],
+   "lat": 35.728,
+   "lon": 139.7448,
+   "corridor": "i-south",
+   "kind": "new"
+  },
+  {
+   "index": 113,
+   "name": "白山",
+   "codes": [
+    "I-13"
+   ],
+   "lat": 35.7214,
+   "lon": 139.7521,
+   "corridor": "i-south",
+   "kind": "new"
+  },
+  {
+   "index": 114,
+   "name": "春日",
+   "codes": [
+    "I-12",
+    "E-07"
+   ],
+   "lat": 35.7096,
+   "lon": 139.7533,
+   "corridor": "i-south",
+   "kind": "new"
+  },
+  {
+   "index": 115,
+   "name": "水道橋",
+   "codes": [
+    "I-11"
+   ],
+   "lat": 35.7034,
+   "lon": 139.7552,
+   "corridor": "i-south",
+   "kind": "new"
+  },
+  {
+   "index": 116,
+   "name": "神保町",
+   "codes": [
+    "I-10",
+    "Z07",
+    "S-06"
+   ],
+   "lat": 35.6955,
+   "lon": 139.7581,
+   "corridor": "i-south",
+   "kind": "new"
+  },
+  {
+   "index": 117,
+   "name": "内幸町",
+   "codes": [
+    "I-07"
+   ],
+   "lat": 35.6698,
+   "lon": 139.7556,
+   "corridor": "i-south",
+   "kind": "new"
+  },
+  {
+   "index": 118,
+   "name": "御成門",
+   "codes": [
+    "I-06"
+   ],
+   "lat": 35.6612,
+   "lon": 139.7515,
+   "corridor": "i-south",
+   "kind": "new"
+  },
+  {
+   "index": 119,
+   "name": "芝公園",
+   "codes": [
+    "I-05"
+   ],
+   "lat": 35.6541,
+   "lon": 139.7498,
+   "corridor": "i-south",
+   "kind": "new"
+  },
+  {
+   "index": 120,
+   "name": "町屋",
+   "codes": [
+    "C17"
+   ],
+   "lat": 35.7427,
+   "lon": 139.7805,
+   "corridor": "c-south (seed)",
+   "kind": "seed"
+  },
+  {
+   "index": 121,
+   "name": "西日暮里",
+   "codes": [
+    "C16"
+   ],
+   "lat": 35.7323,
+   "lon": 139.7665,
+   "corridor": "c-south",
+   "kind": "new"
+  },
+  {
+   "index": 122,
+   "name": "千駄木",
+   "codes": [
+    "C15"
+   ],
+   "lat": 35.7255,
+   "lon": 139.7632,
+   "corridor": "c-south",
+   "kind": "new"
+  },
+  {
+   "index": 123,
+   "name": "根津",
+   "codes": [
+    "C14"
+   ],
+   "lat": 35.7174,
+   "lon": 139.7657,
+   "corridor": "c-south",
+   "kind": "new"
+  },
+  {
+   "index": 124,
+   "name": "湯島",
+   "codes": [
+    "C13"
+   ],
+   "lat": 35.7082,
+   "lon": 139.7699,
+   "corridor": "c-south",
+   "kind": "new"
+  },
+  {
+   "index": 125,
+   "name": "新御茶ノ水",
+   "codes": [
+    "C12"
+   ],
+   "lat": 35.6981,
+   "lon": 139.766,
+   "corridor": "c-south",
+   "kind": "new"
+  },
+  {
+   "index": 126,
+   "name": "二重橋前",
+   "codes": [
+    "C10"
+   ],
+   "lat": 35.6811,
+   "lon": 139.7619,
+   "corridor": "c-south",
+   "kind": "new"
+  },
+  {
+   "index": 127,
+   "name": "赤坂",
+   "codes": [
+    "C06"
+   ],
+   "lat": 35.6732,
+   "lon": 139.7383,
+   "corridor": "c-south",
+   "kind": "new"
+  },
+  {
+   "index": 128,
+   "name": "乃木坂",
+   "codes": [
+    "C05"
+   ],
+   "lat": 35.6666,
+   "lon": 139.7262,
+   "corridor": "c-south",
+   "kind": "new"
+  },
+  {
+   "index": 129,
+   "name": "明治神宮前",
+   "codes": [
+    "F15",
+    "C03"
+   ],
+   "lat": 35.6685,
+   "lon": 139.7054,
+   "corridor": "c-south",
+   "kind": "new"
+  },
+  {
+   "index": 130,
+   "name": "代々木公園",
+   "codes": [
+    "C02"
+   ],
+   "lat": 35.6692,
+   "lon": 139.6891,
+   "corridor": "c-south",
+   "kind": "new"
+  },
+  {
+   "index": 131,
+   "name": "代々木上原",
+   "codes": [
+    "C01"
+   ],
+   "lat": 35.6692,
+   "lon": 139.6802,
+   "corridor": "c-south",
+   "kind": "new"
+  },
+  {
+   "index": 132,
+   "name": "綾瀬",
+   "codes": [
+    "C19"
+   ],
+   "lat": 35.7622,
+   "lon": 139.825,
+   "corridor": "c-north",
+   "kind": "new"
+  },
+  {
+   "index": 133,
+   "name": "北綾瀬",
+   "codes": [
+    "C20"
+   ],
+   "lat": 35.7771,
+   "lon": 139.832,
+   "corridor": "c-north",
+   "kind": "new"
+  },
+  {
+   "index": 134,
+   "name": "東池袋",
+   "codes": [
+    "Y10"
+   ],
+   "lat": 35.7257,
+   "lon": 139.7195,
+   "corridor": "y-south (seed)",
+   "kind": "seed"
+  },
+  {
+   "index": 135,
+   "name": "護国寺",
+   "codes": [
+    "Y11"
+   ],
+   "lat": 35.719,
+   "lon": 139.7275,
+   "corridor": "y-south",
+   "kind": "new"
+  },
+  {
+   "index": 136,
+   "name": "江戸川橋",
+   "codes": [
+    "Y12"
+   ],
+   "lat": 35.7095,
+   "lon": 139.7335,
+   "corridor": "y-south",
+   "kind": "new"
+  },
+  {
+   "index": 137,
+   "name": "市ケ谷",
+   "codes": [
+    "N09",
+    "S-04",
+    "Y14"
+   ],
+   "lat": 35.6913,
+   "lon": 139.7366,
+   "corridor": "y-south",
+   "kind": "new"
+  },
+  {
+   "index": 138,
+   "name": "麹町",
+   "codes": [
+    "Y15"
+   ],
+   "lat": 35.684,
+   "lon": 139.7376,
+   "corridor": "y-south",
+   "kind": "new"
+  },
+  {
+   "index": 139,
+   "name": "永田町",
+   "codes": [
+    "N07",
+    "Z04",
+    "Y16"
+   ],
+   "lat": 35.6788,
+   "lon": 139.7403,
+   "corridor": "y-south",
+   "kind": "new"
+  },
+  {
+   "index": 140,
+   "name": "桜田門",
+   "codes": [
+    "Y17"
+   ],
+   "lat": 35.6774,
+   "lon": 139.7515,
+   "corridor": "y-south",
+   "kind": "new"
+  },
+  {
+   "index": 141,
+   "name": "有楽町",
+   "codes": [
+    "Y18"
+   ],
+   "lat": 35.6757,
+   "lon": 139.7633,
+   "corridor": "y-south",
+   "kind": "new"
+  },
+  {
+   "index": 142,
+   "name": "銀座一丁目",
+   "codes": [
+    "Y19"
+   ],
+   "lat": 35.6743,
+   "lon": 139.767,
+   "corridor": "y-south",
+   "kind": "new"
+  },
+  {
+   "index": 143,
+   "name": "新富町",
+   "codes": [
+    "Y20"
+   ],
+   "lat": 35.6705,
+   "lon": 139.7737,
+   "corridor": "y-south",
+   "kind": "new"
+  },
+  {
+   "index": 144,
+   "name": "月島",
+   "codes": [
+    "E-16",
+    "Y21"
+   ],
+   "lat": 35.6649,
+   "lon": 139.7842,
+   "corridor": "y-south",
+   "kind": "new"
+  },
+  {
+   "index": 145,
+   "name": "豊洲",
+   "codes": [
+    "Y22"
+   ],
+   "lat": 35.6549,
+   "lon": 139.7962,
+   "corridor": "y-south",
+   "kind": "new"
+  },
+  {
+   "index": 146,
+   "name": "辰巳",
+   "codes": [
+    "Y23"
+   ],
+   "lat": 35.6456,
+   "lon": 139.8105,
+   "corridor": "y-south",
+   "kind": "new"
+  },
+  {
+   "index": 147,
+   "name": "新木場",
+   "codes": [
+    "Y24"
+   ],
+   "lat": 35.6458,
+   "lon": 139.8263,
+   "corridor": "y-south",
+   "kind": "new"
+  },
+  {
+   "index": 148,
+   "name": "要町",
+   "codes": [
+    "F08",
+    "Y08"
+   ],
+   "lat": 35.7332,
+   "lon": 139.6987,
+   "corridor": "y-north",
+   "kind": "new"
+  },
+  {
+   "index": 149,
+   "name": "千川",
+   "codes": [
+    "F07",
+    "Y07"
+   ],
+   "lat": 35.7382,
+   "lon": 139.6893,
+   "corridor": "y-north",
+   "kind": "new"
+  },
+  {
+   "index": 150,
+   "name": "小竹向原",
+   "codes": [
+    "F06",
+    "Y06"
+   ],
+   "lat": 35.7438,
+   "lon": 139.6786,
+   "corridor": "y-north",
+   "kind": "new"
+  },
+  {
+   "index": 151,
+   "name": "氷川台",
+   "codes": [
+    "F05",
+    "Y05"
+   ],
+   "lat": 35.7495,
+   "lon": 139.6656,
+   "corridor": "y-north",
+   "kind": "new"
+  },
+  {
+   "index": 152,
+   "name": "平和台",
+   "codes": [
+    "F04",
+    "Y04"
+   ],
+   "lat": 35.7579,
+   "lon": 139.6538,
+   "corridor": "y-north",
+   "kind": "new"
+  },
+  {
+   "index": 153,
+   "name": "地下鉄赤塚",
+   "codes": [
+    "F03",
+    "Y03"
+   ],
+   "lat": 35.7699,
+   "lon": 139.644,
+   "corridor": "y-north",
+   "kind": "new"
+  },
+  {
+   "index": 154,
+   "name": "地下鉄成増",
+   "codes": [
+    "F02",
+    "Y02"
+   ],
+   "lat": 35.7766,
+   "lon": 139.6315,
+   "corridor": "y-north",
+   "kind": "new"
+  },
+  {
+   "index": 155,
+   "name": "和光市",
+   "codes": [
+    "F01",
+    "Y01"
+   ],
+   "lat": 35.7885,
+   "lon": 139.6124,
+   "corridor": "y-north",
+   "kind": "new"
+  },
+  {
+   "index": 156,
+   "name": "半蔵門",
+   "codes": [
+    "Z05"
+   ],
+   "lat": 35.6857,
+   "lon": 139.7416,
+   "corridor": "z-east",
+   "kind": "new"
+  },
+  {
+   "index": 157,
+   "name": "水天宮前",
+   "codes": [
+    "Z10"
+   ],
+   "lat": 35.6827,
+   "lon": 139.7854,
+   "corridor": "z-east",
+   "kind": "new"
+  },
+  {
+   "index": 158,
+   "name": "清澄白河",
+   "codes": [
+    "Z11",
+    "E-14"
+   ],
+   "lat": 35.6821,
+   "lon": 139.7989,
+   "corridor": "z-east",
+   "kind": "new"
+  },
+  {
+   "index": 159,
+   "name": "住吉",
+   "codes": [
+    "Z12",
+    "S-13"
+   ],
+   "lat": 35.6891,
+   "lon": 139.8157,
+   "corridor": "z-east",
+   "kind": "new"
+  },
+  {
+   "index": 160,
+   "name": "錦糸町",
+   "codes": [
+    "Z13"
+   ],
+   "lat": 35.6976,
+   "lon": 139.8149,
+   "corridor": "z-east",
+   "kind": "new"
+  },
+  {
+   "index": 161,
+   "name": "岩本町",
+   "codes": [
+    "S-08"
+   ],
+   "lat": 35.6955,
+   "lon": 139.7759,
+   "corridor": "s-east (seed)",
+   "kind": "seed"
+  },
+  {
+   "index": 162,
+   "name": "馬喰横山",
+   "codes": [
+    "S-09"
+   ],
+   "lat": 35.6921,
+   "lon": 139.7828,
+   "corridor": "s-east (seed)",
+   "kind": "seed"
+  },
+  {
+   "index": 163,
+   "name": "浜町",
+   "codes": [
+    "S-10"
+   ],
+   "lat": 35.6885,
+   "lon": 139.7882,
+   "corridor": "s-east",
+   "kind": "new"
+  },
+  {
+   "index": 164,
+   "name": "森下",
+   "codes": [
+    "E-13",
+    "S-11"
+   ],
+   "lat": 35.688,
+   "lon": 139.797,
+   "corridor": "s-east",
+   "kind": "new"
+  },
+  {
+   "index": 165,
+   "name": "菊川",
+   "codes": [
+    "S-12"
+   ],
+   "lat": 35.6884,
+   "lon": 139.806,
+   "corridor": "s-east",
+   "kind": "new"
+  },
+  {
+   "index": 166,
+   "name": "西大島",
+   "codes": [
+    "S-14"
+   ],
+   "lat": 35.6893,
+   "lon": 139.8262,
+   "corridor": "s-east",
+   "kind": "new"
+  },
+  {
+   "index": 167,
+   "name": "大島",
+   "codes": [
+    "S-15"
+   ],
+   "lat": 35.6899,
+   "lon": 139.8356,
+   "corridor": "s-east",
+   "kind": "new"
+  },
+  {
+   "index": 168,
+   "name": "東大島",
+   "codes": [
+    "S-16"
+   ],
+   "lat": 35.6904,
+   "lon": 139.846,
+   "corridor": "s-east",
+   "kind": "new"
+  },
+  {
+   "index": 169,
+   "name": "船堀",
+   "codes": [
+    "S-17"
+   ],
+   "lat": 35.6838,
+   "lon": 139.8643,
+   "corridor": "s-east",
+   "kind": "new"
+  },
+  {
+   "index": 170,
+   "name": "一之江",
+   "codes": [
+    "S-18"
+   ],
+   "lat": 35.6861,
+   "lon": 139.8829,
+   "corridor": "s-east",
+   "kind": "new"
+  },
+  {
+   "index": 171,
+   "name": "瑞江",
+   "codes": [
+    "S-19"
+   ],
+   "lat": 35.6933,
+   "lon": 139.8976,
+   "corridor": "s-east",
+   "kind": "new"
+  },
+  {
+   "index": 172,
+   "name": "篠崎",
+   "codes": [
+    "S-20"
+   ],
+   "lat": 35.706,
+   "lon": 139.9037,
+   "corridor": "s-east",
+   "kind": "new"
+  },
+  {
+   "index": 173,
+   "name": "本八幡",
+   "codes": [
+    "S-21"
+   ],
+   "lat": 35.7229,
+   "lon": 139.9266,
+   "corridor": "s-east",
+   "kind": "new"
+  },
+  {
+   "index": 174,
+   "name": "小川町",
+   "codes": [
+    "S-07"
+   ],
+   "lat": 35.6955,
+   "lon": 139.7676,
+   "corridor": "s-west",
+   "kind": "new"
+  },
+  {
+   "index": 175,
+   "name": "曙橋",
+   "codes": [
+    "S-03"
+   ],
+   "lat": 35.6924,
+   "lon": 139.7229,
+   "corridor": "s-west",
+   "kind": "new"
+  },
+  {
+   "index": 176,
+   "name": "駒込",
+   "codes": [
+    "N14"
+   ],
+   "lat": 35.737,
+   "lon": 139.7464,
+   "corridor": "n-north (seed)",
+   "kind": "seed"
+  },
+  {
+   "index": 177,
+   "name": "西ケ原",
+   "codes": [
+    "N15"
+   ],
+   "lat": 35.746,
+   "lon": 139.7423,
+   "corridor": "n-north (seed)",
+   "kind": "seed"
+  },
+  {
+   "index": 178,
+   "name": "王子",
+   "codes": [
+    "N16"
+   ],
+   "lat": 35.754,
+   "lon": 139.7376,
+   "corridor": "n-north",
+   "kind": "new"
+  },
+  {
+   "index": 179,
+   "name": "王子神谷",
+   "codes": [
+    "N17"
+   ],
+   "lat": 35.7652,
+   "lon": 139.7359,
+   "corridor": "n-north",
+   "kind": "new"
+  },
+  {
+   "index": 180,
+   "name": "志茂",
+   "codes": [
+    "N18"
+   ],
+   "lat": 35.7779,
+   "lon": 139.7326,
+   "corridor": "n-north",
+   "kind": "new"
+  },
+  {
+   "index": 181,
+   "name": "赤羽岩淵",
+   "codes": [
+    "N19"
+   ],
+   "lat": 35.7834,
+   "lon": 139.7221,
+   "corridor": "n-north",
+   "kind": "new"
+  },
+  {
+   "index": 182,
+   "name": "本駒込",
+   "codes": [
+    "N13"
+   ],
+   "lat": 35.7242,
+   "lon": 139.7538,
+   "corridor": "n-south",
+   "kind": "new"
+  },
+  {
+   "index": 183,
+   "name": "東大前",
+   "codes": [
+    "N12"
+   ],
+   "lat": 35.7176,
+   "lon": 139.758,
+   "corridor": "n-south",
+   "kind": "new"
+  },
+  {
+   "index": 184,
+   "name": "六本木一丁目",
+   "codes": [
+    "N05"
+   ],
+   "lat": 35.6656,
+   "lon": 139.739,
+   "corridor": "n-south",
+   "kind": "new"
+  },
+  {
+   "index": 185,
+   "name": "麻布十番",
+   "codes": [
+    "N04",
+    "E-22"
+   ],
+   "lat": 35.6547,
+   "lon": 139.7371,
+   "corridor": "n-south",
+   "kind": "new"
+  },
+  {
+   "index": 186,
+   "name": "白金高輪",
+   "codes": [
+    "N03",
+    "I-03"
+   ],
+   "lat": 35.6429,
+   "lon": 139.7341,
+   "corridor": "n-south",
+   "kind": "new"
+  },
+  {
+   "index": 187,
+   "name": "白金台",
+   "codes": [
+    "N02",
+    "I-02"
+   ],
+   "lat": 35.6379,
+   "lon": 139.7261,
+   "corridor": "n-south",
+   "kind": "new"
+  },
+  {
+   "index": 188,
+   "name": "目黒",
+   "codes": [
+    "N01",
+    "I-01"
+   ],
+   "lat": 35.6333,
+   "lon": 139.7155,
+   "corridor": "n-south",
+   "kind": "new"
+  },
+  {
+   "index": 189,
+   "name": "光が丘",
+   "codes": [
+    "E-38"
+   ],
+   "lat": 35.7585,
+   "lon": 139.6286,
+   "corridor": "e-main (seed)",
+   "kind": "seed"
+  },
+  {
+   "index": 190,
+   "name": "練馬春日町",
+   "codes": [
+    "E-37"
+   ],
+   "lat": 35.7515,
+   "lon": 139.6402,
+   "corridor": "e-main (seed)",
+   "kind": "seed"
+  },
+  {
+   "index": 191,
+   "name": "豊島園",
+   "codes": [
+    "E-36"
+   ],
+   "lat": 35.7421,
+   "lon": 139.6491,
+   "corridor": "e-main",
+   "kind": "new"
+  },
+  {
+   "index": 192,
+   "name": "練馬",
+   "codes": [
+    "E-35"
+   ],
+   "lat": 35.7374,
+   "lon": 139.6548,
+   "corridor": "e-main",
+   "kind": "new"
+  },
+  {
+   "index": 193,
+   "name": "新江古田",
+   "codes": [
+    "E-34"
+   ],
+   "lat": 35.7325,
+   "lon": 139.6707,
+   "corridor": "e-main",
+   "kind": "new"
+  },
+  {
+   "index": 194,
+   "name": "落合南長崎",
+   "codes": [
+    "E-33"
+   ],
+   "lat": 35.7236,
+   "lon": 139.6833,
+   "corridor": "e-main",
+   "kind": "new"
+  },
+  {
+   "index": 195,
+   "name": "中井",
+   "codes": [
+    "E-32"
+   ],
+   "lat": 35.714,
+   "lon": 139.6864,
+   "corridor": "e-main",
+   "kind": "new"
+  },
+  {
+   "index": 196,
+   "name": "東中野",
+   "codes": [
+    "E-31"
+   ],
+   "lat": 35.7069,
+   "lon": 139.683,
+   "corridor": "e-main",
+   "kind": "new"
+  },
+  {
+   "index": 197,
+   "name": "西新宿五丁目",
+   "codes": [
+    "E-29"
+   ],
+   "lat": 35.6898,
+   "lon": 139.6843,
+   "corridor": "e-main",
+   "kind": "new"
+  },
+  {
+   "index": 198,
+   "name": "都庁前",
+   "codes": [
+    "E-28"
+   ],
+   "lat": 35.6906,
+   "lon": 139.6926,
+   "corridor": "e-main",
+   "kind": "new"
+  },
+  {
+   "index": 199,
+   "name": "代々木",
+   "codes": [
+    "E-26"
+   ],
+   "lat": 35.6832,
+   "lon": 139.7017,
+   "corridor": "e-main",
+   "kind": "new"
+  },
+  {
+   "index": 200,
+   "name": "国立競技場",
+   "codes": [
+    "E-25"
+   ],
+   "lat": 35.6798,
+   "lon": 139.7149,
+   "corridor": "e-main",
+   "kind": "new"
+  },
+  {
+   "index": 201,
+   "name": "赤羽橋",
+   "codes": [
+    "E-21"
+   ],
+   "lat": 35.655,
+   "lon": 139.7436,
+   "corridor": "e-main",
+   "kind": "new"
+  },
+  {
+   "index": 202,
+   "name": "汐留",
+   "codes": [
+    "E-19"
+   ],
+   "lat": 35.6637,
+   "lon": 139.7606,
+   "corridor": "e-main",
+   "kind": "new"
+  },
+  {
+   "index": 203,
+   "name": "築地市場",
+   "codes": [
+    "E-18"
+   ],
+   "lat": 35.6649,
+   "lon": 139.7669,
+   "corridor": "e-main",
+   "kind": "new"
+  },
+  {
+   "index": 204,
+   "name": "勝どき",
+   "codes": [
+    "E-17"
+   ],
+   "lat": 35.6585,
+   "lon": 139.7764,
+   "corridor": "e-main",
+   "kind": "new"
+  },
+  {
+   "index": 205,
+   "name": "両国",
+   "codes": [
+    "E-12"
+   ],
+   "lat": 35.6969,
+   "lon": 139.7974,
+   "corridor": "e-main",
+   "kind": "new"
+  },
+  {
+   "index": 206,
+   "name": "新御徒町",
+   "codes": [
+    "E-10"
+   ],
+   "lat": 35.707,
+   "lon": 139.782,
+   "corridor": "e-main",
+   "kind": "new"
+  },
+  {
+   "index": 207,
+   "name": "上野御徒町",
+   "codes": [
+    "E-09"
+   ],
+   "lat": 35.7079,
+   "lon": 139.7743,
+   "corridor": "e-main",
+   "kind": "new"
+  },
+  {
+   "index": 208,
+   "name": "牛込神楽坂",
+   "codes": [
+    "E-05"
+   ],
+   "lat": 35.7009,
+   "lon": 139.7358,
+   "corridor": "e-main",
+   "kind": "new"
+  },
+  {
+   "index": 209,
+   "name": "牛込柳町",
+   "codes": [
+    "E-04"
+   ],
+   "lat": 35.6995,
+   "lon": 139.725,
+   "corridor": "e-main",
+   "kind": "new"
+  },
+  {
+   "index": 210,
+   "name": "若松河田",
+   "codes": [
+    "E-03"
+   ],
+   "lat": 35.6992,
+   "lon": 139.7182,
+   "corridor": "e-main",
+   "kind": "new"
+  },
+  {
+   "index": 211,
+   "name": "東新宿",
+   "codes": [
+    "F12",
+    "E-02"
+   ],
+   "lat": 35.6989,
+   "lon": 139.7076,
+   "corridor": "e-main",
+   "kind": "new"
+  },
+  {
+   "index": 212,
+   "name": "新宿西口",
+   "codes": [
+    "E-01"
+   ],
+   "lat": 35.6933,
+   "lon": 139.6992,
+   "corridor": "e-main",
+   "kind": "new"
+  },
+  {
+   "index": 213,
+   "name": "雑司が谷",
+   "codes": [
+    "F10"
+   ],
+   "lat": 35.7202,
+   "lon": 139.7148,
+   "corridor": "f-line",
+   "kind": "new"
+  },
+  {
+   "index": 214,
+   "name": "西早稲田",
+   "codes": [
+    "F11"
+   ],
+   "lat": 35.7082,
+   "lon": 139.7091,
+   "corridor": "f-line",
+   "kind": "new"
+  },
+  {
+   "index": 215,
+   "name": "北参道",
+   "codes": [
+    "F14"
+   ],
+   "lat": 35.6785,
+   "lon": 139.7055,
+   "corridor": "f-line",
+   "kind": "new"
+  }
+ ]
+}
