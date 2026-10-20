@@ -131,6 +131,19 @@ for (const f of CITY.facts) if (f.length > 140) err('a fact runs ' + f.length + 
 for (const e of CITY.eggs) for (const id of e.needs) if (idx(id) < 0) err('egg ' + e.id + ' needs missing ' + id);
 if (CITY.ghostTrain && !CITY.eggs.some((e) => e.id === CITY.ghostTrain.id)) err('the ghost train has no egg');
 
+// The diagram (spec 01 §3.12): every anchor placed by hand on the half grid,
+// no two on one point, and a plan stop never on top of the one before it.
+if (CITY.id !== 'stockholm') {
+  const seen = new Map();
+  for (const a of ANCHORS) {
+    if (!Array.isArray(a.dia) || a.dia.length !== 2) { err(a.name + ' has no diagram position'); continue; }
+    if (a.dia.some((v) => !Number.isFinite(v) || Math.round(v * 2) !== v * 2)) err(a.name + ' is off the half grid on the diagram');
+    const k = a.dia.join(',');
+    if (seen.has(k)) err(a.name + ' and ' + seen.get(k) + ' share a diagram point');
+    seen.set(k, a.name);
+  }
+}
+
 // Portals stand on real termini, open in a real era, and have a cost.
 for (const p of CITY.portals || []) {
   if (idx(p.anchor) < 0) err('portal ' + p.id + ' stands on missing ' + p.anchor);

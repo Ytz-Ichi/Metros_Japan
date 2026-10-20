@@ -396,11 +396,11 @@ export function nearPlanStake(g, p) {
 
 // --- Drawing ---
 
-// Latin and digits in Plex Mono, Japanese from the system's own Gothic
-// (spec 01 §3.16): no font is shipped for it, so the dependency list stays
-// one line long. The same stack as --tb-mono in tokens.css.
+// Latin and digits in Plex Mono, Japanese in the bundled Noto Sans JP
+// subset, the system Gothic behind it (spec 01 §3.16). The same stack as
+// --tb-mono in tokens.css.
 function mono(size, weight) {
-  return (weight ? weight + ' ' : '') + (size * uiScale) + 'px "IBM Plex Mono", "Hiragino Sans", ' +
+  return (weight ? weight + ' ' : '') + (size * uiScale) + 'px "IBM Plex Mono", "Metros Noto Sans JP", "Hiragino Sans", ' +
     '"Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", "Noto Sans JP", ui-monospace, monospace';
 }
 

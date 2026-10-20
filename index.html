@@ -40,6 +40,24 @@
     font-weight: 600;
     font-display: swap;
   }
+  /* Japanese text: Noto Sans JP (SIL OFL, fonts/OFL-NotoSansJP.txt), cut to
+     the characters the game ships by _dev/subset-fonts.mjs. Its own family
+     name, so a system copy of Noto never mixes in; unicode-range keeps Latin
+     on Plex Mono. */
+  @font-face {
+    font-family: "Metros Noto Sans JP";
+    src: url("fonts/NotoSansJP-Regular.subset.woff2") format("woff2");
+    font-weight: 400;
+    font-display: swap;
+    unicode-range: U+3000-30FF, U+3400-9FFF, U+F900-FAFF, U+FF00-FFEF, U+2010-2027, U+2190-21FF, U+00B7, U+00D7;
+  }
+  @font-face {
+    font-family: "Metros Noto Sans JP";
+    src: url("fonts/NotoSansJP-SemiBold.subset.woff2") format("woff2");
+    font-weight: 600;
+    font-display: swap;
+    unicode-range: U+3000-30FF, U+3400-9FFF, U+F900-FAFF, U+FF00-FFEF, U+2010-2027, U+2190-21FF, U+00B7, U+00D7;
+  }
   /* The newspaper voice (pass 03): Libre Caslon, SIL OFL, vendored like the
      Plex files and credited in About. The game's own voice stays Plex Mono. */
   @font-face {
@@ -382,6 +400,17 @@
     margin: 0.4rem 0.1rem 0;
   }
 
+  /* The era-gate bars in the money panel (proposal 5). */
+  .tb-gates { margin-top: 0.35rem; display: flex; flex-direction: column; gap: 3px; }
+  .tb-gates__head { color: var(--tb-ghost); font-size: var(--tb-fs-micro); letter-spacing: var(--tb-track-caps); }
+  .tb-gates__row { display: grid; grid-template-columns: 3.2em 1fr auto; align-items: center; gap: 0.5rem;
+    font-size: var(--tb-fs-caption); color: var(--tb-muted); }
+  .tb-gates__bar { height: 4px; background: var(--tb-line); position: relative; }
+  .tb-gates__bar > i { position: absolute; inset: 0 auto 0 0; background: var(--tb-amber-dim); }
+  .tb-gates__row[data-done] .tb-gates__bar > i { background: var(--tb-green); }
+  .tb-gates__row[data-done] .tb-gates__v { color: var(--tb-green); }
+  .tb-gates__v { font-variant-numeric: tabular-nums; }
+
   #boot {
     position: fixed;
     inset: 0;
@@ -457,6 +486,15 @@
         <hr class="tb-divider">
         <div class="tb-row"><span><span class="tb-num tb-num--trust" id="pk">信頼 0.0</span> <span class="tb-rate" id="pk-rate" style="color: var(--tb-politic)"></span></span><span id="pk-cov">カバー率 0%</span></div>
         <div class="tb-row"><span><b class="tb-row__v" id="stat-delivered">0</b> <span id="riders-label">延べ乗客数</span></span><span id="riders-rate"></span></div>
+        <!-- The next era's three gates, always in view (spec 01 §4 proposal 5):
+             "what is missing" was the question asked most, and the rail that
+             answers it can be folded away. -->
+        <div class="tb-gates" id="era-gates" hidden>
+          <div class="tb-gates__head" id="gates-head"></div>
+          <div class="tb-gates__row" data-gate="riders"><span class="tb-gates__k"></span><span class="tb-gates__bar"><i></i></span><span class="tb-gates__v"></span></div>
+          <div class="tb-gates__row" data-gate="trust"><span class="tb-gates__k"></span><span class="tb-gates__bar"><i></i></span><span class="tb-gates__v"></span></div>
+          <div class="tb-gates__row" data-gate="plan"><span class="tb-gates__k"></span><span class="tb-gates__bar"><i></i></span><span class="tb-gates__v"></span></div>
+        </div>
         <div class="tb-row" id="rush-row" hidden><span id="rush-chip"></span><span></span></div>
       </div>
     </div>
@@ -956,7 +994,7 @@
         <div class="tb-setting"><span>地図タイル</span><span class="tb-setting__v"><a href="https://openfreemap.org">OpenFreeMap</a></span></div>
         <div class="tb-setting"><span>地図エンジン</span><span class="tb-setting__v"><a href="https://maplibre.org">MapLibre GL JS</a> (BSD-3)</span></div>
         <div class="tb-setting"><span>駅の座標</span><span class="tb-setting__v">ekidata.jp 由来の公開データ（open-data-jp-railway-stations）</span></div>
-        <div class="tb-setting"><span>書体</span><span class="tb-setting__v">IBM Plex Mono · Libre Caslon（SIL OFL）· 和文は端末の書体</span></div>
+        <div class="tb-setting"><span>書体</span><span class="tb-setting__v">IBM Plex Mono · Noto Sans JP · Libre Caslon（いずれも SIL OFL）</span></div>
         <div class="tb-setting"><span>音楽</span><span class="tb-setting__v">"Morning Rain", "Countryside", "Oceanside" &amp; "Florist" by TAD (<a href="https://opengameart.org/content/lofi-compilation">OpenGameArt</a>, CC0)</span></div>
         <div class="tb-setting"><span>解析</span><span class="tb-setting__v">なし。このページは何も外へ送らない</span></div>
         <button class="tb-btn tb-btn--std tb-btn--block" id="about-back" style="margin-top: 1rem">戻る</button>

@@ -21,6 +21,13 @@ const K = (name) => sim.STORE_PREFIX + name;
   if (miss.length) console.warn('strings missing for ' + LOCALE + ': ' + miss.join(', '));
 }
 document.documentElement.lang = LOCALE;
+// The canvas only asks for a web font it is already drawing with, so fetch
+// the Japanese subset up front; the map redraws every frame and picks it up
+// the moment it lands.
+if (LOCALE === 'ja' && document.fonts && document.fonts.load) {
+  document.fonts.load('400 12px "Metros Noto Sans JP"', '名古屋').catch(() => {});
+  document.fonts.load('600 12px "Metros Noto Sans JP"', '名古屋').catch(() => {});
+}
 render.setStrings(STR.canvas);
 // Era colours are the pack's (spec 01 §3.14): injected, never written per city in CSS.
 for (const e of sim.ERAS) document.documentElement.style.setProperty('--tb-era-' + e.key, e.color);
@@ -3159,6 +3166,35 @@ function popNum(el) {
   el.classList.add('tb-num--pop');
 }
 
+// The next era's gates as three bars (spec 01 §4 proposal 5): riders,
+// trust, and the plan's stations, each with the number it still needs.
+function updateGates() {
+  const next = sim.nextEra(g);
+  const box = $('era-gates');
+  box.hidden = !next || !g.opened;
+  if (box.hidden) return;
+  $('gates-head').textContent = STR.gates.head(next.year);
+  let built = 0, total = 0;
+  for (const c of CORRIDORS) {
+    if (c.opensIn > g.era) continue;
+    built += sim.corridorProgress(g, c);
+    total += c.anchors.length;
+  }
+  const rows = {
+    riders: [g.totalDelivered / next.delivered, fmt(Math.min(g.totalDelivered, next.delivered)) + ' / ' + fmt(next.delivered)],
+    trust: [g.pk / next.pk, Math.min(g.pk, next.pk).toFixed(1) + ' / ' + next.pk],
+    plan: [total ? built / total : 1, built + ' / ' + total],
+  };
+  for (const row of box.querySelectorAll('[data-gate]')) {
+    const [f, v] = rows[row.dataset.gate];
+    const done = f >= 1 - 1e-9;
+    row.querySelector('.tb-gates__k').textContent = STR.gates[row.dataset.gate];
+    row.querySelector('.tb-gates__bar > i').style.width = Math.round(Math.max(0, Math.min(1, f)) * 100) + '%';
+    row.querySelector('.tb-gates__v').textContent = v;
+    row.toggleAttribute('data-done', done);
+  }
+}
+
 // --- Stats ---
 function updateUI() {
   // The opening legend earns its space while the player learns the first
@@ -3183,6 +3219,7 @@ function updateUI() {
   netEl.classList.toggle('tb-rate--down', net < 0);
   netEl.classList.toggle('tb-rate--up', net >= 0);
   $('stat-delivered').textContent = fmt(g.totalDelivered);
+  updateGates();
   const rent = sim.commerceRate(g);
   $('rate-rent').textContent = rent > 0 ? STR.hud.rent(hudRate(rent)) : '';
   // grossRate() already contains rent, so the fares row must exclude it or the

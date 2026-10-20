@@ -1226,6 +1226,14 @@ const FOUNDED_FROM = CITY.lines.foundedFrom ?? 2;
 
 // A line's stripe (名港線's white dashes, spec 02 §3.1) comes from the
 // identity that gave it its name, so it never needs saving.
+// A line's station-numbering letter (H, M, T…), the same way: from the
+// identity that named it, or the first line's own. Free lines have none.
+export function lineLetter(L) {
+  if (L.name0 === CITY.start.line.name) return CITY.start.line.letter || null;
+  for (const id of Object.values(LINE_IDENTITY)) if (id.name === L.name0) return id.letter || null;
+  return null;
+}
+
 export function lineStripe(L) {
   for (const id of Object.values(LINE_IDENTITY)) if (id.name === L.name0 && id.stripe) return id.stripe;
   return null;

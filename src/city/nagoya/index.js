@@ -43,7 +43,7 @@ export default {
   start: {
     year: 1957,
     built: [0, 1, 2],    // 名古屋・伏見・栄, the 1957-11-15 line (then 伏見町・栄町)
-    line: { name: '東山線', color: C.higashiyama, number: 1 },
+    line: { name: '東山線', color: C.higashiyama, number: 1, letter: 'H' },
     trains: 1,
   },
   anchors: ANCHORS,
@@ -181,12 +181,12 @@ export default {
     // Free lines' colours keep clear of the six official ones (spec 02 §3).
     palette: ['#35a86b', '#4f8fd4', '#8fae4a', '#6fd6b0', '#c8a040', '#d77a3c'],
     identities: {
-      meijo: { name: '名城線', number: 2, color: C.meijo },
+      meijo: { name: '名城線', number: 2, letter: 'M', color: C.meijo },
       // 名港線 is 名城線's purple with a white stripe (spec 02 §3.1).
-      meiko: { name: '名港線', number: 2, color: C.meijo, stripe: '#ffffff' },
-      tsurumai: { name: '鶴舞線', number: 3, color: C.tsurumai },
-      sakuradori: { name: '桜通線', number: 6, color: C.sakuradori },
-      kamiiida: { name: '上飯田線', number: 7, color: C.kamiiida },
+      meiko: { name: '名港線', number: 2, letter: 'E', color: C.meijo, stripe: '#ffffff' },
+      tsurumai: { name: '鶴舞線', number: 3, letter: 'T', color: C.tsurumai },
+      sakuradori: { name: '桜通線', number: 6, letter: 'S', color: C.sakuradori },
+      kamiiida: { name: '上飯田線', number: 7, letter: 'K', color: C.kamiiida },
     },
     reserved: [C.meijo, C.tsurumai, C.sakuradori, C.kamiiida],
     historic: ['東山線', '名城線', '名港線', '鶴舞線', '桜通線', '上飯田線'],

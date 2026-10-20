@@ -248,6 +248,10 @@
 .tb-dia__label { font: var(--tb-weight-semi) var(--tb-fs-micro) var(--tb-mono); fill: var(--tb-dia-label);
   letter-spacing: .01em; paint-order: stroke; stroke: var(--tb-dia-bg); stroke-width: 3px; stroke-linejoin: round; }
 .tb-dia__label--term { fill: var(--tb-ink); }
+/* Station numbering and line symbols (Japan Metros, spec 01 §4 proposal 12). */
+.tb-dia__code { font: 400 9px var(--tb-mono); fill: var(--tb-ghost); letter-spacing: .02em;
+  paint-order: stroke; stroke: var(--tb-dia-bg); stroke-width: 3px; stroke-linejoin: round; }
+.tb-dia__sym text { font: var(--tb-weight-semi) 11px var(--tb-mono); }
 .tb-dia__legend { position: absolute; display: flex; flex-direction: column; gap: .35rem; }
 .tb-dia__legrow { display: flex; align-items: center; gap: .5rem; font: 400 var(--tb-fs-caption)/1 var(--tb-mono);
   color: var(--tb-muted); }

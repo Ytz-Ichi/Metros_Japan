@@ -28,10 +28,10 @@
 
   --tb-veil: rgba(7, 10, 14, 0.78);
   --tb-plate: rgba(7, 10, 14, 0.62);
-  /* Latin and digits in Plex Mono; Japanese falls through to the system's
-     own Gothic (spec 01 §3.16), so no font ships for it. render.js mono()
-     carries the same stack for the canvas. */
-  --tb-mono: "IBM Plex Mono", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", "Noto Sans JP", ui-monospace, "SF Mono", Menlo, monospace;
+  /* Latin and digits in Plex Mono; Japanese in the bundled Noto Sans JP
+     subset, then the system's own Gothic for anything the subset lacks
+     (spec 01 §3.16). render.js mono() carries the same stack for the canvas. */
+  --tb-mono: "IBM Plex Mono", "Metros Noto Sans JP", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", "Noto Sans JP", ui-monospace, "SF Mono", Menlo, monospace;
   --tb-stroke-map: 2.5px;
   --tb-stroke-icon: 2px;
   --tb-stroke-hair: 1px;

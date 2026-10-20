@@ -464,6 +464,7 @@ export function makeStrings({ B, CAT }) {
     },
     upkeepQuote: (r) => ' Upkeep grows about ' + r + '.',
     eraEta: (min) => ' (about ' + min + ' min at this coverage)',
+    gates: { head: (year) => 'To ' + year, riders: 'riders', trust: 'trust', plan: 'plan' },
     qtyMax: 'MAX',
     hud: {
       fares: (r) => '+' + r + ' fares',

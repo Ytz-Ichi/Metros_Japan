@@ -12,7 +12,7 @@
 // caller updates per frame; everything else rebuilds only when the
 // network's shape changes. A ring draws closed.
 
-import { CITY, ANCHORS, trainPos, linesAtAnchor, lineStripe } from './sim.js';
+import { CITY, ANCHORS, trainPos, linesAtAnchor, lineStripe, lineLetter } from './sim.js';
 
 const U = 46;    // px per diagram unit
 const PAD = 78;
@@ -124,8 +124,55 @@ export function diagramSVG(g) {
       if (st.hub) {
         out += '<circle cx="' + x + '" cy="' + y + '" r="12" fill="none" stroke="var(--tb-dia-tick)" stroke-width="1.2"></circle>';
       }
-      out += '<text class="tb-dia__label' + (terminus ? ' tb-dia__label--term' : '') + '" x="' + (x + 12) + '" y="' + (y + 4) + '">' + esc(st.name) + '</text>';
+      // Where the line runs flat (東山線 and 桜通線 along their rows), names
+      // sit centred above the node and numbers below, so neighbours 1.5
+      // units apart never print over each other; elsewhere both go right.
+      const a = linePts[li][Math.max(0, i - 1)], b = linePts[li][Math.min(linePts[li].length - 1, i + 1)];
+      const flat = Math.abs(b[0] - a[0]) > Math.abs(b[1] - a[1]);
+      const cls = 'tb-dia__label' + (terminus ? ' tb-dia__label--term' : '');
+      const codes = st.anchor !== null && ANCHORS[st.anchor].codes;
+      if (flat) {
+        out += '<text class="' + cls + '" text-anchor="middle" x="' + x + '" y="' + (y - r - 6) + '">' + esc(st.name) + '</text>';
+        if (codes) out += '<text class="tb-dia__code" text-anchor="middle" x="' + x + '" y="' + (y + r + 11) + '">' + esc(codes.join('·')) + '</text>';
+      } else {
+        out += '<text class="' + cls + '" x="' + (x + 12) + '" y="' + (y + 4) + '">' + esc(st.name) + '</text>';
+        // Station numbering under the name (spec 01 §4 proposal 12), the
+        // Japanese platform-diagram habit.
+        if (codes) out += '<text class="tb-dia__code" x="' + (x + 12) + '" y="' + (y + 15) + '">' + esc(codes.join('·')) + '</text>';
+      }
     });
+  });
+
+  // Each historic line's symbol, a ringed letter in its colour, beyond each
+  // end that is not an interchange (both, if both are), pointing away from
+  // the line. A ring wears one, off its north-west corner.
+  g.lines.forEach((L, li) => {
+    const letter = lineLetter(L);
+    const pts = linePts[li];
+    if (!letter || pts.length < 2) return;
+    let ends;
+    if (L.loop) {
+      let k = 0;
+      pts.forEach((p, j) => { if (p[0] + p[1] < pts[k][0] + pts[k][1]) k = j; });
+      ends = [[k, null]];
+    } else {
+      const shared = (j) => L.stations[j].anchor !== null && linesAtAnchor(g, L.stations[j].anchor) >= 2;
+      ends = [[0, 1], [pts.length - 1, pts.length - 2]];
+      const plain = ends.filter(([j]) => !shared(j));
+      if (plain.length) ends = plain;
+    }
+    for (const [a, b] of ends) {
+      const ax = X(pts[a]), ay = Y(pts[a]);
+      let cx = ax - 22, cy = ay - 22;
+      if (b !== null) {
+        const bx = X(pts[b]), by = Y(pts[b]);
+        const len = Math.hypot(ax - bx, ay - by) || 1;
+        cx = ax + (ax - bx) / len * 26;
+        cy = ay + (ay - by) / len * 26;
+      }
+      out += '<g class="tb-dia__sym"><circle cx="' + cx + '" cy="' + cy + '" r="10" fill="var(--tb-dia-bg)" stroke="' + L.color + '" stroke-width="3"></circle>' +
+        '<text x="' + cx + '" y="' + (cy + 4) + '" text-anchor="middle" fill="' + L.color + '">' + letter + '</text></g>';
+    }
   });
 
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" ' +

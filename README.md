@@ -55,7 +55,7 @@ ES モジュールは `file://` では読めないので、サーバーが必要
 
 元のゲームから受け継いだもの。多くはバグで学んだ。
 
-- **ランタイム依存ゼロ。** 地図描画の MapLibre GL だけを同梱する。和文フォントは端末の書体を使う。
+- **ランタイム依存ゼロ。** 地図描画の MapLibre GL だけを同梱する。和文は Noto Sans JP を使う文字だけにサブセットして同梱する（`node _dev/subset-fonts.mjs <TTF のあるフォルダ>`。和文の文字列を増やしたら作り直す）。
 - **sim が真実を持ち、renderer はピクセルを持つ。** 画面の数字は全て sim から読む。
 - **集計フローでエージェントは無し。** 乗客は駅間を流れる量。
 - **エンティティのコンストラクタは一つ。** ハーネスは `sim.addTrain()` を使い、リテラルを書かない（smoke が検査する）。
@@ -80,7 +80,7 @@ node _dev/probe-arc.mjs 3600 quiet            # 1 時間のペーシング計測
 地図データ © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors、タイル
 [OpenFreeMap](https://openfreemap.org)、描画 [MapLibre GL JS](https://maplibre.org)（BSD-3）。
 駅の座標は ekidata.jp 由来の公開データ（open-data-jp-railway-stations）。書体 IBM Plex Mono と
-Libre Caslon（SIL OFL）。音楽 "Morning Rain"、"Countryside"、"Oceanside"、"Florist" by TAD
+Libre Caslon、Noto Sans JP（いずれも SIL OFL、`fonts/OFL*.txt`）。音楽 "Morning Rain"、"Countryside"、"Oceanside"、"Florist" by TAD
 （[OpenGameArt](https://opengameart.org/content/lofi-compilation)、CC0）。
 
 ## ライセンス
