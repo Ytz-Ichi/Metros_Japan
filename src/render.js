@@ -7,7 +7,7 @@ import {
   CITY, ANCHORS, CORRIDORS, BUILD_CENTER,
   stationCap, usedAnchorsOnLine, usedAnchorsAll, linesAtAnchor,
   endStation, waitingAt, trainPos, anchorRevealed, teaseVisible, dayPhase,
-  buildRadiusNow, growthView, planStakes, canCloseLoopAt, lineStripe,
+  buildRadiusNow, growthView, planStakes, canCloseLoopAt, lineStripe, PORTALS,
 } from './sim.js';
 
 const WATER = CITY.water || [];
@@ -750,6 +750,37 @@ export function trunkOffsets(g) {
   });
 }
 
+// Through-running stubs (spec 01 §3.7, §4 proposal 8): past a built
+// terminus, a short dashed line toward where the private railway goes, with
+// its name. Faint until bought, then in the colour of the line it meets: the
+// map grows past its own edge.
+function drawPortals(g) {
+  if (!PORTALS.length) return;
+  const used = usedAnchorsAll(g);
+  for (const pt of PORTALS) {
+    if (!used.has(pt.anchorIdx)) continue;
+    const a = project(ANCHORS[pt.anchorIdx].geo);
+    const far = project(pt.toward);
+    const len = Math.hypot(far.x - a.x, far.y - a.y) || 1;
+    const reach = Math.min(len, Math.max(46, 1.4 * pxPerKm()));
+    const b = { x: a.x + (far.x - a.x) * reach / len, y: a.y + (far.y - a.y) * reach / len };
+    const owned = !!g.owned[pt.id];
+    const L = g.lines.find((x) => x.stations.some((s) => s.anchor === pt.anchorIdx));
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.setLineDash(owned ? [7, 5] : [3, 6]);
+    ctx.lineWidth = owned ? 4 : 2.5;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = owned && L ? L.color : COL.ghost;
+    ctx.globalAlpha = owned ? 0.85 : 0.6;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.setLineDash([]);
+    label(pt.name + (pt.label ? ' · ' + pt.label : ''), b.x + 8, b.y, owned ? COL.ink : COL.ghost, 10);
+  }
+}
+
 function drawAllLines(g) {
   const offsets = trunkOffsets(g);
   g.lines.forEach((L, li) => {
@@ -1286,6 +1317,7 @@ export function draw(g) {
   drawGrowth(g);
   drawTease(g);
   drawAnchors(g);
+  drawPortals(g);
   drawAllLines(g);
   drawEndHandles(g);
   drawDragPreview(g);

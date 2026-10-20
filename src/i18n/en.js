@@ -478,6 +478,7 @@ export function makeStrings({ B, CAT }) {
     loopCCW: 'anticlockwise',
     loopBadge: 'ring',
     loopFloat: 'The ring is closed',
+    portalFloat: (name) => 'Through-running with ' + name,
     canvas: {
       buildHere: 'Build here',
       dragThisEnd: 'Drag this end to the pulsing ring',

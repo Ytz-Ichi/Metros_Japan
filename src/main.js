@@ -2607,8 +2607,23 @@ function aimText() {
 }
 
 let lastAim = '';
+// The plan's next stop, if the aim is naming one: clicking the strip brings
+// it on screen (spec 01 §4 proposal 11), since a stake off the edge of the
+// map is the one the player cannot find.
+function aimTarget() {
+  const b = sim.planBlockers(g)[0];
+  if (!b) return null;
+  const st = sim.planStakes(g).find((x) => x.corridor.id === b.id);
+  return st ? ANCHORS[st.anchor].geo : null;
+}
+$('aim-text').addEventListener('click', () => {
+  const geo = aimTarget();
+  if (geo && map) map.easeTo({ center: [geo[1], geo[0]], duration: 700 });
+});
+
 function updateAim() {
   if (charterCoachLine !== null && g.lines[charterCoachLine]?.stations.length > 2) finishCharterCoach();
+  $('aim-text').style.cursor = aimTarget() ? 'pointer' : '';
   const aim = aimsHidden || paused ? null : aimText();
   $('aim-panel').hidden = !aim;
   if (aim && aim !== lastAim) {
@@ -2844,6 +2859,7 @@ const SHOP_META = {
 };
 // The pack's charters are all projects.
 for (const p of CITY.projects || []) SHOP_META[p.id] = { icon: 'net', cat: 'project' };
+for (const p of sim.PORTALS) SHOP_META[p.id] = { icon: 'thru', cat: 'project' };
 
 const ICONS = {};
 {
@@ -3324,6 +3340,7 @@ function frame(now) {
       const d = sim.COUNCIL.find((x) => x.id === e.id);
       render.addFloatGeo(e.geo, STR.councilFloat + ' · ' + (d ? decWords(d).name : e.name));
     }
+    if (e.type === 'portal') { render.addFloatGeo(e.geo, STR.portalFloat(e.name)); sfx.achievement(); }
     if (e.type === 'loop') {
       render.addFloatGeo(e.geo, e.name + ' · ' + STR.loopFloat);
       sfx.achievement();

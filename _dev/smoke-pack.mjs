@@ -131,6 +131,14 @@ for (const f of CITY.facts) if (f.length > 140) err('a fact runs ' + f.length + 
 for (const e of CITY.eggs) for (const id of e.needs) if (idx(id) < 0) err('egg ' + e.id + ' needs missing ' + id);
 if (CITY.ghostTrain && !CITY.eggs.some((e) => e.id === CITY.ghostTrain.id)) err('the ghost train has no egg');
 
+// Portals stand on real termini, open in a real era, and have a cost.
+for (const p of CITY.portals || []) {
+  if (idx(p.anchor) < 0) err('portal ' + p.id + ' stands on missing ' + p.anchor);
+  if (!(p.era >= 0 && p.era < ERAS.length)) err('portal ' + p.id + ' opens in a missing era');
+  if (!(p.cost && (p.cost.pk || p.cost.kr))) err('portal ' + p.id + ' has no price');
+  if (!(p.demand > 0 && p.reachKm > 0)) err('portal ' + p.id + ' brings nobody');
+}
+
 // The hub and the build centre.
 if (!ANCHORS.some((a) => a.hub)) err('no born hub');
 if (CITY.test.loopCloseAnchor) {

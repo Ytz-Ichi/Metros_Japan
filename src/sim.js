@@ -54,6 +54,10 @@ export const CORRIDORS = (() => {
   });
 })();
 
+// Through-running (spec 01 §3.7): each portal is bought like a catalog item
+// and turns its terminus into a door to the private railway beyond.
+export const PORTALS = (CITY.portals || []).map((p) => ({ ...p, anchorIdx: anchorIndex(p.anchor) }));
+
 export const BAL = {
   startMoney: 900,  // enough that the opening minute ends in a build, not a wait
   farePerKm: 6,            // kr per passenger-kilometre, paid as passengers board.
@@ -949,6 +953,12 @@ export const CATALOG = (() => {
     for (const p of CITY.projects || []) {
       out.push({ id: p.id, base: p.pk, growth: 1, max: 1, era: p.era, currency: 'pk', kind: 'project' });
     }
+    for (const p of PORTALS) {
+      out.push({
+        id: p.id, base: p.cost.pk || p.cost.kr, growth: 1, max: 1, era: p.era,
+        currency: p.cost.pk ? 'pk' : undefined, kind: 'portal', unlock: { anchorId: p.anchor },
+      });
+    }
   }
   for (const [id, o] of Object.entries(CITY.catalog || {})) {
     const have = out.find((x) => x.id === id);
@@ -1444,7 +1454,7 @@ export function eraYear(g) {
 // City growth indicator: living population over the authored one. Display and
 // coverage read it; SPAWN never does (demand lives in the district budgets).
 export function cityMult(g) {
-  return g.srcW.reduce((a, b) => a + b, 0) / REGION_POP_BASE;
+  return livePop(g) / liveBase(g);
 }
 
 export function stationCap(g) {
@@ -1851,14 +1861,37 @@ export function linesAtAnchor(g, anchor) {
 // implicit small district, plus the authored blobs. Stations claim shares by
 // catchment and distance; shares per source sum to at most its budget. ---
 
+// Through-running portals (spec 01 §3.7) come LAST, so srcW indices for the
+// anchors and districts never move: a portal is the private railway's riders
+// arriving at a terminus, a source that lives only once its purchase is
+// owned. Until then it has no budget, claims nothing, never grows, and does
+// not count against coverage (an unbought railway must not lower it).
 function demandSources() {
   const src = [];
   ANCHORS.forEach((a) => src.push({ geo: a.geo, w: a.hub ? HUB_MULT : 1, reach: 0.6 }));
   DISTRICTS.forEach((d) => src.push({ geo: d.geo, w: d.w, reach: d.rKm }));
+  for (const p of PORTALS) src.push({ geo: ANCHORS[p.anchorIdx].geo, w: p.demand, reach: p.reachKm, portal: p.id });
   return src;
 }
 const SOURCES = demandSources();
-export const REGION_POP_BASE = SOURCES.reduce((a, s) => a + s.w, 0);
+export const REGION_POP_BASE = SOURCES.reduce((a, s) => a + (s.portal ? 0 : s.w), 0);
+
+function srcLive(g, j) {
+  const p = SOURCES[j].portal;
+  return !p || !!g.owned[p];
+}
+
+// The living population and its authored base, over the sources that are live.
+function livePop(g) {
+  let w = 0;
+  for (let j = 0; j < SOURCES.length; j++) if (srcLive(g, j)) w += g.srcW[j];
+  return w;
+}
+function liveBase(g) {
+  let w = 0;
+  for (let j = 0; j < SOURCES.length; j++) if (srcLive(g, j)) w += SOURCES[j].w;
+  return w;
+}
 const DEMAND_FLOOR = 0.15;
 // The unclaimed remainder: people who walk or drive. Stations never split a
 // full budget among themselves; better catchment (entrances, tier) converts
@@ -1919,6 +1952,7 @@ export function computeDemand(g) {
   const claims = new Map();
   for (const key of phys.keys()) claims.set(key, DEMAND_FLOOR);
   perSource.forEach((local, j) => {
+    if (!srcLive(g, j)) return;
     for (const [key, frac] of local) {
       claims.set(key, claims.get(key) + g.srcW[j] * frac);
     }
@@ -1948,7 +1982,7 @@ function growCity(g, dt) {
   }
   let moved = false;
   perSource.forEach((local, j) => {
-    if (!local.length) return;
+    if (!local.length || !srcLive(g, j)) return;
     let q = 0;
     for (const [key, frac] of local) q += frac * (1 - crowdOf.get(key));
     // Council policy reaches the city here: subsidy raises the pace, the
@@ -1970,6 +2004,7 @@ export function growthView(g) {
   const out = [];
   for (let j = 0; j < SOURCES.length; j++) {
     const s = SOURCES[j];
+    if (!srcLive(g, j)) continue;
     const p = (g.srcW[j] / s.w - 1) / (capMult - 1);
     if (p > 0.02) out.push({ geo: s.geo, reach: s.reach, w: s.w, p: Math.min(1, p), j });
   }
@@ -1981,7 +2016,9 @@ export function growthView(g) {
 export function freeSpotValue(g, geo) {
   const phys = physicalStations(g);
   let m = DEMAND_FLOOR;
-  for (const s of SOURCES) {
+  for (let j = 0; j < SOURCES.length; j++) {
+    const s = SOURCES[j];
+    if (!srcLive(g, j)) continue;
     const dNew = kmBetween(geo, s.geo);
     if (dNew > s.reach) continue;
     const cNew = Math.max(0, 1 - (dNew / s.reach) ** 2);
@@ -2783,7 +2820,7 @@ export function coverage(g) {
   }
   let cov = 0;
   for (const v of seen.values()) cov += v;
-  return Math.min(1, cov / g.srcW.reduce((a, b) => a + b, 0));
+  return Math.min(1, cov / livePop(g));
 }
 
 export function tick(g, dt) {
@@ -4075,6 +4112,12 @@ export function buy(g, id) {
   // Routing-relevant effects (transfer penalty, ride speed) re-route the city.
   if (item.mult && (item.mult.transfer || item.mult.speed || item.mult.dispatchInterval)) {
     g._netRev2 = undefined;
+  }
+  if (item.kind === 'portal') {
+    // The railway beyond the terminus opens its doors: the source goes live.
+    computeDemand(g);
+    const p = PORTALS.find((x) => x.id === id);
+    g.events.push({ type: 'portal', id, name: p.name, geo: ANCHORS[p.anchorIdx].geo });
   }
   if (id === 'train') {
     // Where a new train goes is the player's call if they have made one.

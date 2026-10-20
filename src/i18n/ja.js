@@ -559,6 +559,7 @@ export function makeStrings({ B, CAT, money, rate }) {
     loopCCW: '左回り',
     loopBadge: '環状',
     loopFloat: '環状運転開始',
+    portalFloat: (name) => name + 'と直通運転開始',
     canvas: {
       buildHere: 'ここに建てる',
       dragThisEnd: 'この端を光る輪までドラッグ',

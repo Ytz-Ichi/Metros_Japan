@@ -137,6 +137,41 @@ for (let era = 0; era < sim.ERAS.length; era++) {
   if (!g.endingSeen) err('every station in the last era should reach 終点');
 }
 
+// --- Through-running (spec 01 §3.7): a bought portal makes its terminus a
+// door to the railway beyond. Its source is dead until bought (no demand, no
+// coverage penalty), and buying it raises the terminus's demand and the
+// network's income. ---
+{
+  const base = sim.hydrate(sim.serialize(g));
+  const pt = sim.PORTALS.find((p) => p.id === 'portal-toyota');
+  const akaike = () => {
+    for (const L of base.lines) for (const s of L.stations) if (s.anchor === pt.anchorIdx) return s.mult;
+    return 0;
+  };
+  const cov0 = sim.coverage(base);
+  const m0 = akaike();
+  const withP = sim.hydrate(sim.serialize(g));
+  withP.pk = 100;
+  if (!sim.canBuy(withP, 'portal-toyota')) err('名鉄豊田線 through-running should sell once 赤池 stands');
+  if (!sim.buy(withP, 'portal-toyota')) err('buying the portal failed');
+  if (!withP.events.some((e) => e.type === 'portal')) err('the portal should announce itself');
+  let m1 = 0;
+  for (const L of withP.lines) for (const s of L.stations) if (s.anchor === pt.anchorIdx) m1 = s.mult;
+  if (!(m1 > m0 + 0.3)) err('赤池 should gain the railway\'s riders, ' + m0 + ' -> ' + m1);
+  if (!(sim.coverage(base) === cov0)) err('an unbought portal must not move coverage');
+  const earn = (h) => {
+    h.owned.drivers = 1; h.money = 1e9; h.nextIncidentAt = Infinity; h.nextSurgeAt = Infinity;
+    for (let t = 0; t < 120; t += 0.05) { sim.tick(h, 0.05); h.events.length = 0; }
+    const before = h.money;
+    for (let t = 0; t < 240; t += 0.05) { sim.tick(h, 0.05); h.events.length = 0; }
+    return h.money - before;
+  };
+  const a0 = earn(base), a1 = earn(withP);
+  if (!(a1 > a0)) err('through-running should raise income, ' + Math.round(a0) + ' -> ' + Math.round(a1));
+  // Unbought, the source is inert: a fresh game's city multiplier reads 1.
+  if (Math.abs(sim.cityMult(sim.newGame()) - 1) > 1e-9) err('portals must not dilute the city multiplier');
+}
+
 // --- The ring's service (spec 01 §3.3) ---
 {
   const r = sim.hydrate(sim.serialize(g));

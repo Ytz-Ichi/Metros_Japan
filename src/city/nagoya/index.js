@@ -160,6 +160,18 @@ export default {
     { name: '清須', geo: [35.228, 136.870], rKm: 1.0, w: 0.45 },
     { name: '小牧方面', geo: [35.215, 136.930], rKm: 0.9, w: 0.40 },
   ],
+  // 直通運転 (spec 02 §8): the termini where Meitetsu and Linimo hand their
+  // riders over. `toward` points the map stub out past the terminus.
+  portals: [
+    { id: 'portal-toyota', anchor: 'akaike', name: '名鉄豊田線', label: '豊田市へ', era: 3, demand: 0.6, reachKm: 0.6,
+      cost: { pk: 4 }, toward: [35.105, 137.060] },       // 1979-07-29
+    { id: 'portal-inuyama', anchor: 'kami-otai', name: '名鉄犬山線', label: '犬山へ', era: 3, demand: 0.6, reachKm: 0.6,
+      cost: { pk: 4 }, toward: [35.250, 136.905] },       // 1993-08-12
+    { id: 'portal-komaki', anchor: 'kamiiida', name: '名鉄小牧線', label: '小牧へ', era: 4, demand: 0.5, reachKm: 0.6,
+      cost: { pk: 2 }, toward: [35.225, 136.935] },       // 2003-03-27
+    { id: 'portal-linimo', anchor: 'fujigaoka', name: 'リニモ', label: '万博会場へ', era: 4, demand: 0.4, reachKm: 0.6,
+      cost: { kr: 60000 }, toward: [35.175, 137.060] },   // 2005-03-06
+  ],
   lines: {
     // Free lines' colours keep clear of the six official ones (spec 02 §3).
     palette: ['#35a86b', '#4f8fd4', '#8fae4a', '#6fd6b0', '#c8a040', '#d77a3c'],
