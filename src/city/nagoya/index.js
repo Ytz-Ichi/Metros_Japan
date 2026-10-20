@@ -96,6 +96,11 @@ export default {
       tease: { from: [35.1024, 136.9555], to: [35.103, 136.962], label: '徳重へ · 2011', labelAt: [35.1060, 136.9640] } },
   ],
   // Gates are the original game's (🎮), to be measured (spec 02 §1).
+  // First measurement, probe-arc 7200 quiet at the pack split (2026-10-20):
+  // 1965 @ 708 s, 1971 @ 1593 s, 1977 @ 3808 s, 1989 @ 5740 s, and 2011
+  // still waiting on trust at two hours (27 of 90). Fifteen dead zones from
+  // t=2724 on, against fourteen for the original game under the same bot
+  // (whose run the Stockholm pack reproduces exactly). Tuning is M3's.
   eras: [
     { year: 1957, key: '1957', color: C.higashiyama },
     { year: 1965, key: '1965', color: C.meijo, pk: 5, delivered: 20000 },
