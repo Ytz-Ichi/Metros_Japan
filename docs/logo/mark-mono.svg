@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" role="img" aria-label="Japan Metros">
+  <!-- Single-colour variant (currentColor) for places that cannot show colour: the ring is open where the bar passes. -->
+  <path d="M24 12a14 14 0 0 1 13.4 10M37.4 30A14 14 0 0 1 10.6 30M10.6 22A14 14 0 0 1 24 12" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+  <rect x="1" y="22.5" width="46" height="7" rx="3.5" fill="currentColor"/>
+</svg>

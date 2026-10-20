@@ -60,7 +60,7 @@ eras: [
 ```js
 id: 'tokyo',
 name: { ja: '東京', en: 'Tokyo' },
-gameTitle: { ja: 'メトロをつくる · 東京', en: 'Metros · Tokyo' },
+gameTitle: { ja: 'Japan Metros', en: 'Japan Metros' },   // 都市版の表記は「Japan Metros · 東京」。ロゴは名古屋の記号の色替え案（01 §6.1）
 locale: 'ja',
 currency: { unit: '円', scale: 1000, locale: 'ja-JP', shortForm: 'wan' },
 map: {
