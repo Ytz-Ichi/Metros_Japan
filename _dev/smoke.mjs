@@ -4,7 +4,18 @@
 // progress, and save round-trips. Run: node _dev/smoke.mjs
 import * as sim from '../src/sim.js';
 import { trunkOffsets, trainMarks, nearTrain, nearStationAt, setProjector, setUIScale } from '../src/render.js';
-import { ANCHORS, CORRIDORS, WEST_FIRST, WATER, inRing, kmBetween } from '../src/data.js';
+import { inRing, kmBetween } from '../src/geo.js';
+
+// This suite was written against the original Stockholm game and still
+// measures it: run it with METROS_CITY=stockholm (npm-free: the package
+// script lives in the README). The Japanese packs have their own suites.
+if (sim.CITY.id !== 'stockholm') {
+  console.error('smoke.mjs measures the Stockholm pack: run METROS_CITY=stockholm node _dev/smoke.mjs');
+  process.exit(1);
+}
+const { ANCHORS, CORRIDORS } = sim;
+const WATER = sim.CITY.water;
+const WEST_FIRST = sim.anchorIndex('hotorget');
 
 const err = (msg) => { console.error('ASSERT FAILED: ' + msg); process.exit(1); };
 
@@ -789,7 +800,7 @@ if (!sawSurge) err('a surge should have occurred within ten minutes');
       li = c.lines.length - 1;
       sim.addTrain(c, li);
     }
-    for (let k = corridor.start; k < corridor.end; k++) {
+    for (const k of corridor.anchors) {
       if (c.lines[li].stations.some((st) => st.anchor === k)) continue;
       if (!sim.extendTo(c, li, 'tail', ANCHORS[k].geo, k)) {
         err(corridor.id + ' service setup failed at ' + ANCHORS[k].name);
@@ -1725,7 +1736,7 @@ if (!sawSurge) err('a surge should have occurred within ten minutes');
     const li = e.lines.length - 1;
     for (const id of group) {
       const c = CORRIDORS.find((x) => x.id === id);
-      for (let k = c.start; k < c.end; k++) {
+      for (const k of c.anchors) {
         e.money = 1e12;
         if (!sim.extendTo(e, li, 'tail', ANCHORS[k].geo, k)) err('ending scenario: extend to ' + ANCHORS[k].name + ' failed');
       }

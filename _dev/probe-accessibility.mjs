@@ -4,7 +4,7 @@
 // re-measures Opus's threaded-vs-direct scenario. Run before AND after the
 // sim change: node _dev/probe-accessibility.mjs
 import * as sim from '../src/sim.js';
-import { ANCHORS, CORRIDORS } from '../src/data.js';
+const { ANCHORS, CORRIDORS } = sim;
 
 function corridor(id) { return CORRIDORS.find((c) => c.id === id); }
 
@@ -17,7 +17,7 @@ function buildLines(groups, tierUps) {
     if (li > 0) sim.foundLine(g, 0, 0);
     for (const id of group) {
       const c = corridor(id);
-      for (let k = c.start; k < c.end; k++) {
+      for (const k of c.anchors) {
         g.money = 1e12;
         sim.extendTo(g, li, 'tail', ANCHORS[k].geo, k);
       }
@@ -57,7 +57,7 @@ function direct() {
   const g = buildLines([['green-south']]);
   sim.foundLine(g, 0, 0);
   const c = corridor('red-south');
-  for (let k = c.start; k < c.end; k++) { g.money = 1e12; sim.extendTo(g, 1, 'tail', ANCHORS[k].geo, k); }
+  for (const k of c.anchors) { g.money = 1e12; sim.extendTo(g, 1, 'tail', ANCHORS[k].geo, k); }
   return g;
 }
 
@@ -70,7 +70,7 @@ function threaded() {
   g.money = 1e12;
   sim.extendTo(g, 1, 'tail', ANCHORS[2].geo, 2);  // share Slussen
   const c = corridor('red-south');
-  for (let k = c.start; k < c.end; k++) { g.money = 1e12; sim.extendTo(g, 1, 'tail', ANCHORS[k].geo, k); }
+  for (const k of c.anchors) { g.money = 1e12; sim.extendTo(g, 1, 'tail', ANCHORS[k].geo, k); }
   return g;
 }
 

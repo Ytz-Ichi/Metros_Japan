@@ -3,7 +3,7 @@
 // Targets (plan): eras land at roughly 1h / 4h / 8h / 12h / 16h cumulative.
 // Run: node _dev/probe-campaign-pacing.mjs
 import * as sim from '../src/sim.js';
-import { ANCHORS, CORRIDORS } from '../src/data.js';
+const { ANCHORS, CORRIDORS } = sim;
 
 function corridor(id) { return CORRIDORS.find((c) => c.id === id); }
 
@@ -22,7 +22,7 @@ function buildStage(stage) {
     if (li > 0) sim.foundLine(g, 0, 0);
     for (const id of group) {
       const c = corridor(id);
-      for (let k = c.start; k < c.end; k++) {
+      for (const k of c.anchors) {
         g.money = 1e12;
         sim.extendTo(g, li, 'tail', ANCHORS[k].geo, k);
       }

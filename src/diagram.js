@@ -4,29 +4,49 @@
 // over a bg-coloured casing so crossings read, station ticks, larger
 // interchange rings, the hub's double ring, terminus labels in ink.
 //
-// Anchored stations use the hand-authored dia[x,y] that have waited in
-// data.js since day one. Free spots have no dia, so they take an affine
-// geo-to-dia mapping fitted to the authored anchors, snapped to the half
-// grid so they still read as diagram, not geography. Trains are a separate
-// SVG layer the caller updates per frame; everything else rebuilds only
-// when the network's shape changes.
+// Anchored stations use the pack's dia[x,y]. Free spots (and any anchor
+// without one) take an affine geo-to-dia mapping, least-squares fitted to
+// the anchors that have dia, or derived from the pack's diagram unit when
+// fewer than two do (spec 01 §3.12); snapped to the half grid so they still
+// read as diagram, not geography. Trains are a separate SVG layer the
+// caller updates per frame; everything else rebuilds only when the
+// network's shape changes. A ring draws closed.
 
-import { ANCHORS } from './data.js';
-import { trainPos, linesAtAnchor } from './sim.js';
+import { CITY, ANCHORS, trainPos, linesAtAnchor, lineStripe } from './sim.js';
 
 const U = 46;    // px per diagram unit
 const PAD = 78;
 
-// Affine fit from the authored anchors: T-Centralen dia [5,-2] at
-// [59.3312, 18.0619]; x scaled on Vällingby, y on Hökarängen.
+// x = ax + bx * lon, y = ay + by * lat, fitted once.
+const FIT = (() => {
+  const pts = ANCHORS.filter((a) => a.dia);
+  const ols = (xs, ys) => {
+    const n = xs.length;
+    const mx = xs.reduce((a, b) => a + b, 0) / n, my = ys.reduce((a, b) => a + b, 0) / n;
+    let sxy = 0, sxx = 0;
+    for (let i = 0; i < n; i++) { sxy += (xs[i] - mx) * (ys[i] - my); sxx += (xs[i] - mx) ** 2; }
+    const b = sxx > 0 ? sxy / sxx : 0;
+    return [my - b * mx, b];
+  };
+  if (pts.length >= 2) {
+    const [ax, bx] = ols(pts.map((a) => a.geo[1]), pts.map((a) => a.dia[0]));
+    const [ay, by] = ols(pts.map((a) => a.geo[0]), pts.map((a) => a.dia[1]));
+    return { ax, bx, ay, by };
+  }
+  const o = ANCHORS[(CITY.diagram && CITY.diagram.originAnchor) || 0].geo;
+  const u = (CITY.diagram && CITY.diagram.unitKm) || 0.9;
+  const bx = 111.32 * Math.cos(o[0] * Math.PI / 180) / u, by = -111.32 / u;
+  return { ax: -o[1] * bx, bx, ay: -o[0] * by, by };
+})();
+
 function geoToDia(geo) {
-  const x = 5 + (geo[1] - 18.0619) * 68.5;
-  const y = -2 - (geo[0] - 59.3312) * 161.7;
+  const x = FIT.ax + FIT.bx * geo[1];
+  const y = FIT.ay + FIT.by * geo[0];
   return [Math.round(x * 2) / 2, Math.round(y * 2) / 2];
 }
 
 function diaOf(st) {
-  return st.anchor !== null ? ANCHORS[st.anchor].dia : geoToDia(st.geo);
+  return st.anchor !== null && ANCHORS[st.anchor].dia ? ANCHORS[st.anchor].dia : geoToDia(st.geo);
 }
 
 function esc(s) {
@@ -70,14 +90,18 @@ export function diagramSVG(g) {
   out += '</g>';
 
   // Lines: casing first (bg colour, wider), then the line, so crossings read.
-  const pathOf = (pts) => 'M' + pts.map((p) => X(p) + ' ' + Y(p)).join(' L ');
-  for (const pass of ['casing', 'line']) {
+  const pathOf = (pts, closed) => 'M' + pts.map((p) => X(p) + ' ' + Y(p)).join(' L ') + (closed ? ' Z' : '');
+  for (const pass of ['casing', 'line', 'stripe']) {
     g.lines.forEach((L, li) => {
       if (linePts[li].length < 2) return;
-      out += '<path d="' + pathOf(linePts[li]) + '" fill="none" ' +
+      const stripe = lineStripe(L);
+      if (pass === 'stripe' && !stripe) return;
+      out += '<path d="' + pathOf(linePts[li], L.loop) + '" fill="none" ' +
         (pass === 'casing'
           ? 'stroke="var(--tb-dia-bg)" stroke-width="11"'
-          : 'stroke="' + L.color + '" stroke-width="7"') +
+          : pass === 'line'
+            ? 'stroke="' + L.color + '" stroke-width="7"'
+            : 'stroke="' + stripe + '" stroke-width="2" stroke-dasharray="6 6"') +
         ' stroke-linecap="round" stroke-linejoin="round"></path>';
     });
   }
@@ -93,7 +117,7 @@ export function diagramSVG(g) {
       seen.add(key);
       const p = linePts[li][i];
       const x = X(p), y = Y(p);
-      const terminus = i === 0 || i === L.stations.length - 1;
+      const terminus = !L.loop && (i === 0 || i === L.stations.length - 1);
       const interchange = st.anchor !== null && linesAtAnchor(g, st.anchor) >= 2;
       const r = st.hub ? 8 : interchange ? 7 : 5;
       out += '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="var(--tb-dia-bg)" stroke="var(--tb-dia-tick)" stroke-width="2.5"></circle>';
@@ -131,7 +155,7 @@ export function diagramTrains(g) {
 // Shape signature: rebuild the static SVG only when this moves. Names are
 // part of the shape since 0.13.1 (a rename must repaint the labels).
 export function diagramSig(g) {
-  return g.lines.map((L) => L.stations.length + ':' + L.color).join('|') +
+  return g.lines.map((L) => L.stations.length + ':' + L.color + (L.loop ? 'o' : '')).join('|') +
     '|' + g.lines.map((L) => L.stations.map((s) => s.tier).join('')).join(',') +
     '|' + g.lines.map((L) => L.stations.map((s) => s.name).join(';')).join(',');
 }

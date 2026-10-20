@@ -1,368 +1,37 @@
 import * as sim from './sim.js';
 import * as render from './render.js';
-import { ANCHORS, CORRIDORS, kmBetween } from './data.js';
-import { EGGS, FACTS, NAMES } from './facts.js';
+import { kmBetween } from './geo.js';
 import * as sfx from './sound.js';
 import { diagramSVG, diagramTrains, diagramSig } from './diagram.js';
+import { STR, LOCALE, missingKeys } from './i18n/index.js';
+import * as F from './format.js';
 
-// UI copy interpolates from BAL and the CATALOG so a balance change can never
-// make the interface lie.
+// The city this page plays (spec 01 §2). Nothing below names a place: the
+// pack, the string table and the format module do.
+const CITY = sim.CITY;
+const { ANCHORS, CORRIDORS } = sim;
 const B = sim.BAL;
-const CAT = Object.fromEntries(sim.CATALOG.map((u) => [u.id, u]));
+const FACTS = CITY.facts || [];
+const EGGS = CITY.eggs || [];
+const NAMES = CITY.names || [];
+// Every localStorage key belongs to the city (spec 01 §3.9).
+const K = (name) => sim.STORE_PREFIX + name;
+{
+  const miss = missingKeys();
+  if (miss.length) console.warn('strings missing for ' + LOCALE + ': ' + miss.join(', '));
+}
+document.documentElement.lang = LOCALE;
+render.setStrings(STR.canvas);
+// Era colours are the pack's (spec 01 §3.14): injected, never written per city in CSS.
+for (const e of sim.ERAS) document.documentElement.style.setProperty('--tb-era-' + e.key, e.color);
 
-// Which shop project CHARTERS each planned corridor: the bridge between "the
-// era wants Röda linjen" and the card that actually starts it.
-const PROJECT_OF_CORRIDOR = {
-  'green-west': 'westline',
-  'red-south': 'redline', 'red-orn': 'redline', 'red-ost': 'redline',
-  'blue-main': 'blueline', 'blue-akalla': 'blueline',
-};
-const pct = (x) => Math.round(Math.abs(1 - x) * 100);
-const FEEDBACK_TO_LABEL = 'matthew@maclaine.se';
-// Measured 2026-08-11, from a player's report: buying demand raises riders
-// and income by a quarter to a third and cuts coverage, and so trust, by
-// about a fifth. It is a coherent trade rather than a bug (a grown city is a
-// bigger region to cover) but nothing said so, and a fifth of the trust rate
-// is too much to leave as a surprise. The maths stands; the card now warns.
-const STR_DEMAND_NOTE = ' A busier city is a bigger city, and trust is paid for the share of the region you serve well, so lay on the service to match.';
-const STR = {
-  dispatch: 'AVGÅNG',
-  dispatchSub: 'Dispatch a train',
-  noIdle: 'All trains are out',
-  // A short line, now that How to play carries the manual.
-  hints: 'Drag a line end to build. Space rings the bell. Right-click an end to demolish. ' +
-    'Esc for the menu; How to play explains the rest.',
-  tiers: ['', 'Stop', 'Station', 'Hub'],
-  tierUp: ['', 'Upgrade to Station', 'Upgrade to Hub', ''],
-  tierMax: 'Hub, fully built',
-  tierDown: 'Downgrade tier (no refund)',
-  tierEraGate: 'Hubs unlock in 1957',
-  upgRow: { ent: 'Entrances', gates: 'Gates', shop: 'Retail' },
-  // What each station upgrade DOES, on hover (owner ask, 2026-08-07). The
-  // numbers come from BAL so a balance change cannot make a tooltip lie.
-  upgWhat: {
-    ent: 'Wider catchment: more of the neighbourhood rides from here, and the lit circle on the map grows.',
-    gates: 'Faster boarding: +' + B.gateRatePerLevel + ' passengers/s through the gates, so trains spend less time at this platform.',
-    shop: 'Retail rent: +' + B.shopKrPerLevel + ' kr/s per level, scaled by this station’s footfall. Income even when no train runs.',
-  },
-  tierWhat: [
-    '',
-    'Station: wider catchment, quicker doors, ladders to ' + B.upgMaxByTier[2] + ', and two lines may share it.',
-    'Knutpunkt: the widest catchment, the full ladders to ' + B.upgMaxByTier[3] + ', and it can found new lines.',
-  ],
-  panelDemand: 'Demand',
-  panelWaiting: 'Waiting',
-  panelCrowd: 'Crowding',
-  panelUpkeep: 'Upkeep',
-  panelTop: 'Passengers head for',
-  lvl: 'lvl',
-  foundBtn: 'Found a new line',
-  linesHdr: 'Trains per line',
-  lineHeadway: 'Service interval between departures',
-  lineActive: 'Active trains on this line',
-  // Fleet orders (0.9): the transfer verb was the most-missed mechanic in the
-  // 0.8.2 feedback, so every state says what it does or why it will not.
-  reqTrain: 'Bring a train here',
-  sendTrain: 'Send a train to the line that needs it most',
-  feeShort: 'Need ' + B.moveTrainKr + ' kr for a depot transfer',
-  noSpareElsewhere: 'No other line can spare a train',
-  noSpareHere: 'This line has no train to spare',
-  queuedChip: 'moving…',
-  queuedCancel: 'Transfer ordered · click to cancel and take the ' + B.moveTrainKr + ' kr back',
-  transferHint: 'Depot transfer · ' + B.moveTrainKr + ' kr · a busy train moves when it next parks',
-  aimTag: 'NEXT',
-  aims: {
-    open: 'Ring AVGÅNG to send your first train out. Space works too.',
-    extend: 'Extend the line: drag its glowing end to the staked ring. Building is the game.',
-    train: 'Buy a second train in the shop. One train cannot hold a headway alone.',
-    drivers: 'Hire drivers: trains dispatch themselves, and the line earns while you build.',
-    plan: 'Extend to',        // + the stake's name + corridor progress
-    repair: 'Rebuild',        // a demolished plan stop blocks the era
-    charter: 'Charter',       // + the project's name, when the corridor has no line yet
-    charterWhere: 'its project card waits in the shop under Projects',
-    eraReady: 'The city is ready. Advance the era in the top-right panel.',
-    trust: 'trust grows with coverage, so serve more of the city',
-    riders: 'carry riders: longer lines, more trains',
-    finale: 'Hela Stockholm: connect every remaining station on the map.',
-    toward: 'Toward',
-    toGo: 'to go',
-  },
-  mothballBtn: 'Mothball idle train',
-  reactivateBtn: 'Reactivate train',
-  mothballedFloat: 'mothballed',
-  mothballedTag: 'mothballed',
-  awayTitle: 'While you were away',
-  coverage: 'coverage',
-  phases: ['MORNING RUSH', '', 'EVENING RUSH', 'NIGHT'],
-  demolished: '−' + B.demolishCost + ' kr',
-  cantDemolish: 'Cannot demolish',
-  menuStart: 'Start',
-  menuContinue: 'Continue',
-  menuResume: 'Resume',
-  resetConfirm: 'Really? Click again',
-  reset: 'Reset progress',
-  problems: {
-    money: 'Need',
-    tooClose: 'Too close to another station',
-    water: 'Cannot build in the water (yet)',
-    max: 'The line is at its limit for now',
-    needsTier2: 'A junction needs a Tier 2 station first',
-    plan: 'The 1950 plan comes first · finish the line to build anywhere',
-    far: 'Outside the region plan (for now)',
-  },
-  planRepair: 'needs repair',
-  planDoneFloat: 'line complete',
-  incidentName: 'SIGNALFEL',
-  fixCrew: 'Send the repair crew',
-  incidentOver: 'Signals restored',
-  noteCity: 'STOCKHOLM',
-  noteBoard: 'ON BOARD',
-  notesOn: 'On',
-  notesOff: 'Off',
-  statLost: 'gave up waiting, ever',
-  statLegRiders: 'riders/min',
-  statLegGross: 'kr/s',
-  statNoData: 'The ledger fills as the network runs.',
-  statBestMin: 'Best minute ever',
-  statBestGross: 'Best income rate',
-  statRush: 'Rush grades',
-  statMoves: 'Depot transfers',
-  statFixed: 'Incidents repaired',
-  awayLed: 'led the night',
-  newsContinue: 'Continue · the city keeps running →',
-  newsTurnover: 'turned over',
-  newsStationsOpen: 'stations open',
-  newsStationsBuilt: 'stations built',
-  newsRidersAll: 'riders, all told',
-  newsPlayed: 'played',
-  newsCity: 'Staden.',
-  newsNext: 'Nästa.',
-  newsNoticeK: 'Kungörelse',
-  newsNoticeDone: 'The plan is complete. Nothing further is asked of the railway.',
-  diaToMap: 'KARTA',
-  diaToDiagram: 'DIAGRAM',
-  fleetGrows: 'The fleet cap rises with the next era',
-  upkeepGrows: 'Upkeep grows about',
-  lineColour: 'Line colour',
-  charterHere: 'Charter',
-  charterFor: 'the plan is waiting on it',
-  charterNeeds: 'Needs',
-  targetSet: 'How many trains this line should have. The fleet arranges itself to match',
-  targetIs: 'This line is set to',
-  targetClear: 'click the number to let it float again',
-  targetUp: 'One more train on this line',
-  targetDown: 'One fewer train on this line',
-  transferHintTarget: 'Set how many trains each line should have. A line you leave alone keeps what it has.',
-  // The train inspector (0.15.0). Every line of it obeys the voice rule, so
-  // a state reads as a sentence about a train rather than a labelled field.
-  ti: {
-    train: 'Train',
-    running: 'Running',
-    dwelling: 'Doors open',
-    parked: 'Parked',
-    stabled: 'Stabled',
-    towards: 'toward',
-    between: 'and next calls at',
-    at: 'at',
-    boardingAt: 'at',
-    stabledWhere: 'carrying nobody, at reduced cost',
-    stackOf: 'of',
-    inTheStack: 'in the stack here',
-    full: 'Full service · every stop',
-    express: 'Express · skips some stops',
-    expressNext: 'Next out as express',
-    fullNext: 'Next out as full service',
-    patternNote: 'the line alternates, so this is the run and not the train',
-    bands: { easy: 'Room to spare', fill: 'Filling', busy: 'Busy', crush: 'Crush' },
-    manifest: 'Aboard, and where they get off',
-    change: 'change',
-    off: 'off',
-    furtherA: 'and',
-    furtherB: 'riding further, to',
-    furtherC: 'and the stops before it',
-    ready: 'Ready in',
-    readySec: 's',
-    notSaved: 'not saved',
-    movingTo: 'Moving to',
-    send: 'Move to another line',
-    sendTo: 'Move to',
-    sendNone: 'Nowhere to send it',
-    sendQueued: 'moves when it next parks',
-    stable: 'Stable this train',
-    wake: 'Wake this train',
-    stableLast: 'The last working train stays',
-    gone: 'This train is not here any more. It may have been stabled, moved to another line, or lost its line to a demolition.',
-    renameTitle: 'Name this train',
-    stabledCount: 'Stabled',
-    inspect: 'Inspect',
-  },
-  statsToggle: 'Stats',
-  skipOn: 'Express skips this stop',
-  skipOff: 'Express calls here again',
-  skipWhat: 'On a patterned line, trains alternate: the full service calls everywhere, the express saves the dwell at skipped stops.',
-  patternOnFloat: 'express skips',
-  patternOffFloat: 'express calls',
-  freeUnlockedFloat: 'Build anywhere: the city approves your own stations',
-  junction: 'Interchange',
-  riders: 'riders',
-  // 'pk' (political capital) read as jargon to the owner. The shop already
-  // said "the city pays in trust", so the copy just caught up with itself.
-  // The internal key stays `pk`: saves and the catalog do not need churning.
-  trust: 'trust',
-  krTitle: 'Swedish kronor (SEK)',
-  ridersCarried: 'riders carried',
-  perMin: '/min',
-  everyS: 'every ',
-  bellAuto: 'Automatic · every',
-  unlocksIn: 'Unlocks in',
-  unlockAt: 'Unlocks at',
-  unlockWhen: 'Unlocks when',
-  unlockDelivered: 'is delivered',
-  unlockStations: 'stations',
-  unlockRetail: 'kr/s retail',
-  unlockHubs: 'hubs of your own',
-  need: 'Need',
-  more: 'more',
-  ownedLower: 'owned',
-  openingDay: 'OPENING DAY',
-  ribbonCut: 'The line is open',
-  stops: 'stops',
-  fbOpen: 'Feedback',
-  menuBtn: 'Menu',
-  railHide: 'Hide the upgrade rail',
-  railShow: 'Show the upgrade rail',
-  statusHide: 'Hide the money panel',
-  statusShow: 'Show the money panel',
-  fbTitle: 'What broke, or what would you love?',
-  fbHint: 'Goes straight to the person who made this.',
-  fbSend: 'Submit',
-  fbPlaceholder: 'Write anything: bugs, ideas, confusion...',
-  fbSent: 'Sent. Thank you, genuinely.',
-  fbThanks: 'Could not reach the server, so opening your email app instead.',
-  fbCopied: 'Copied. Send it to ' + FEEDBACK_TO_LABEL + ' when you can.',
-  fbManual: 'Could not send. Email ' + FEEDBACK_TO_LABEL + ' instead.',
-  fbEmpty: 'Write something first.',
-  mapDown: 'Basemap unavailable. Playing on the fallback map.',
-  shop: {
-    train:      { name: 'New train',         desc: 'One more train, on the emptiest line.' },
-    drivers:    { name: 'Hire drivers',      desc: 'Trains dispatch themselves. You can still ring the bell.' },
-    timetable:  { name: 'Tighter timetable', desc: 'Departures run at even intervals on every line, and the signalling floor drops ' + pct(CAT.timetable.mult.dispatchInterval) + '%.' },
-    capacity:   { name: 'Longer trains',     desc: '+' + CAT.capacity.add.trainCap + ' passengers per train.' },
-    bogies:     { name: 'C1 bogie service',  desc: 'Top speed and acceleration up ' + pct(CAT.bogies.mult.speed) + '%; the open stretches quicken, the stops still take their time.' },
-    turnstiles: { name: 'Turnstiles',        desc: 'Fares worth ' + pct(CAT.turnstiles.mult.fare) + '% more.' },
-    stats:      { name: 'Statistics office', desc: 'Graphs, records and a ledger per line. Pays in knowing, not kronor.' },
-    patterns:   { name: 'Trafikledning',     desc: 'Run your own service patterns: mark stops for the express to skip, and trains alternate full and express. Set it per stop, in the station panel.' },
-    region:     { name: 'Regionplanen',      desc: 'Permission to build ' + CAT.region.add.buildRadius + ' km further from T-Centralen, per level. Stockholm does not end at the tullar.' },
-    escalators: { name: 'Rulltrappor',       desc: 'Escalators network-wide: +' + CAT.escalators.add.gateRate + ' passengers/s through every station\'s gates, per level.' },
-    platforms:  { name: 'Längre plattformar', desc: 'Longer platforms hold ' + CAT.platforms.add.stationCap + ' more waiting passengers at every station, per level. Queues stop giving up at the platform edge.' },
-    depot:      { name: 'Vagnhallen',        desc: 'A home for the fleet. Stabled trains cost 60 percent less to run through the night, and the hall shows itself at each line\'s home terminus.' },
-    driftcentral: { name: 'Driftcentralen',  desc: 'The control room above T-Centralen runs the whole fleet tighter. Every train costs 30 percent less to keep in service.' },
-    hosts:      { name: 'Stationsvärdar',    desc: 'Hosts on the platforms: crowded queues give up ' + pct(CAT.hosts.mult.abandon) + '% slower, per level. Patience, bought.' },
-    adverts:    { name: 'Reklamavtal',       desc: 'Advertising in your stations: retail rent worth ' + pct(CAT.adverts.mult.retail) + '% more, per level.' },
-    works:      { name: 'Works department',  desc: 'Bulk orders: raise entrances, gates or retail one level across every station in one click. The buttons appear in the Network panel.' },
-    westline:   { name: 'Västerortsbanan',   desc: 'Megaproject: a second line from T-Centralen to Hötorget, with a train. The city pays in trust.' },
-    redline:    { name: 'Röda linjen',       desc: 'Megaproject: charter the red line as a Söder shuttle, Mariatorget to Zinkensdamm, with a train. Connect it to your network your way; Fruängen waits at the far end.' },
-    blueline:   { name: 'Blå linjen',        desc: 'Megaproject: charter the deep blue line, T-Centralen to Rådhuset, with a train. Hjulsta waits beyond Järvafältet.' },
-    entrances:  { name: 'Extra entrances',   desc: 'Wider catchment: +' + Math.round(CAT.entrances.add.demand * 100) + '% demand everywhere, per level.' + STR_DEMAND_NOTE },
-    through:    { name: 'Through-running',   desc: 'Megaproject: changing lines gets easier, so more of the city rides across them.' },
-    stock1957:  { name: '1957 stock',        desc: 'Top speed and acceleration up ' + pct(CAT.stock1957.mult.speed) + '%; the open stretches quicken, the stops still take their time.' },
-    c4stock:    { name: 'C4 stock',          desc: 'Top speed and acceleration up ' + pct(CAT.c4stock.mult.speed) + '%; the open stretches quicken, the stops still take their time.' },
-    c14stock:   { name: 'C14 stock',         desc: 'Top speed and acceleration up ' + pct(CAT.c14stock.mult.speed) + '%; the open stretches quicken, the stops still take their time.' },
-    zonefare:   { name: 'Zone fares',        desc: 'Fares worth ' + pct(CAT.zonefare.mult.fare) + '% more.' },
-    atc:        { name: 'ATC holding',       desc: 'Comfort: trains stop bunching onto each other. You can watch it work.' },
-    artstation: { name: 'Konst i tunnelbanan', desc: 'Art in the stations: +' + Math.round(CAT.artstation.add.demand * 100) + '% demand everywhere. The world\'s longest gallery.' + STR_DEMAND_NOTE },
-    cbtc:       { name: 'CBTC signalling',   desc: 'Moving-block signalling: trains brake later and run ' + pct(CAT.cbtc.mult.speed) + '% harder, and the signalling floor drops ' + pct(CAT.cbtc.mult.dispatchInterval) + '%.' },
-    nightservice: { name: 'Nattrafik',       desc: 'The city never fully sleeps: night demand doubled.' },
-  },
-  eras: {
-    1952: { title: '1952 · Västerort', blurb: 'The city looks west. Hötorget opens the door toward Vällingby, and Stockholm learns what a network is.' },
-    1957: { title: '1957 · Genom staden', blurb: 'Through-running arrives. The lines stop being lines and start being a system.' },
-    1964: { title: '1964 · Röda linjen', blurb: 'A second colour on the map. The red line digs south through Söder toward Fruängen, and east under Östermalm.' },
-    1975: { title: '1975 · Blå linjen', blurb: 'The deep line. Blue tunnels run northwest over Järvafältet, and the Miljonprogrammet suburbs get their trains.' },
-    2000: { title: '2000 · Hela Stockholm', blurb: 'The story has caught up with the map. From here the city is yours: build any line, anywhere, as many as you like.' },
-  },
-  advance: 'Advance to',
-  advanceNeeds: 'Needs',
-  eraNow: 'Era',
-  arcDone: 'The arc is complete, for now.',
-  linesStat: 'Lines',
-  ending: {
-    title: 'SLUTSTATION',
-    blurb: 'Slutstation is the word Stockholm paints on the end of a line. ' +
-      'Every station on the map has one now, and the arc from 1950 is complete. ' +
-      'This is the end of the story, and the trains keep running: your city does not stop because the chapter does.',
-  },
-  themeRow: 'Theme',
-  numRow: 'Numbers',
-  achEarned: 'ACHIEVEMENT',
-  achToastMore: 'CLICK TO SEE THEM ALL',
-  migrated: 'Save updated for this version: stations now take deeper upgrades ' +
-    '(a Station holds more than a Hållplats), retail is new, and the era targets moved. ' +
-    'Nothing was lost.',
-  bonusName: { fare: 'fares', demand: 'demand', transfer: 'transfers', dispatchInterval: 'dispatch' },
-  about: 'about',
-  trustFrom: 'trust grows with coverage',
-  trustCapped: 'at ceiling',
-  numShort: 'Short (1.2M)',
-  numFull: 'Full digits',
-  buyRow: 'Buy',
-  deeperNeedsTier: 'upgrade the station for more',
-  deeperNeedsEra: 'deeper from',
-  themeDark: 'Dark',
-  themeLight: 'Light',
-  exportBtn: 'Export save',
-  exportDone: 'Copied to clipboard',
-  importBtn: 'Import save',
-  importApply: 'Apply',
-  importBad: 'Not a valid save',
-  restoreBtn: 'Restore backup',
-  restoreBad: 'Backup not readable',
-  importFileBtn: 'Import from file',
-  saveCorruptNote: 'Your saved game was damaged (the checksum does not match), so it has been left untouched and autosave is off. Try Restore backup in Settings, or import a .tbsave file.',
-  logOffline: 'The changelog could not be loaded right now.',
-  goldName: 'Guldtåget',
-  goldBoost: 'double fares for ' + B.goldBoostS + ' seconds',
-  saveLockedNote: 'Your saved game could not be read just now, so it has been left untouched and autosave is off. Try Restore backup in Settings, or refresh; starting fresh or importing turns saving back on.',
-  owned: 'Owned',
-  level: 'Level',
-  max: 'Max',
-  needsDrivers: 'Hire drivers first',
-  slotName: 'Stockholm',
-  slotEmpty: 'Empty slot',
-  slotEmptyMeta: 'Start a new network here',
-  slotBad: 'Damaged save',
-  slotBadMeta: 'This save could not be read so it stays untouched. Restore backup or import may help.',
-  slotNow: 'playing now',
-  slotStations: 'stations',
-  slotRiders: 'riders carried',
-  slotsSub: 'Three networks side by side. Switching parks the one you are playing in its own slot first.',
-  slotsBtnPlain: 'Saves',
-  slotsBtnAt: 'Saves · playing slot',
-  pulseOn: 'On',
-  pulseOff: 'Off',
-  warnsOn: 'On',
-  warnsOff: 'Off',
-  removeBtn: 'Demolish this stop',
-  removeWarnTitle: 'DEMOLISH THE STOP',
-  removeWarn: 'and its riders and upgrades are gone for good. The line closes the gap.',
-  // Renaming (0.13.1). Anchors keep their real names, so the pencil only
-  // shows on stations the player built.
-  renameStation: 'Rename the station',
-  renameLine: 'Rename the line',
-  renameSave: 'Save',
-  renameGiven: 'Use the given name',
-  removeYes: 'Demolish',
-  insertLabel: 'Add a stop here',
-  councilToggle: 'Council',
-  councilInHand: 'in hand',
-  councilNow: 'Available now',
-  councilShort: 'Need',
-  councilMoreTrust: 'more trust',
-  councilNeeds: 'Needs',
-  councilFirst: 'first',
-  councilEra: 'Comes with the charter of',
-  councilFloat: 'The council decides',
-};
+// Money and counts, in the city's currency (spec 01 §3.10).
+const kr = (n) => F.fmtMoneyNum(n);
+const money = (n) => F.fmtMoney(n);
+const rate = (n) => F.fmtRate(n);
+const numHTML = (n) => F.fmtMoneyNum(n) + '<span class="tb-num__unit">' + (F.moneyUnit() === 'kr' ? ' kr' : F.moneyUnit()) + '</span>';
+// A charter's name and the corridor it serves, from the pack.
+const projectOf = (corridorId) => (CORRIDORS.find((c) => c.id === corridorId) || {}).project || null;
 
 // itch serves the game from a sandboxed cross-origin iframe, where Safari and
 // Firefox privacy modes throw on storage access. A throw here would abort the
@@ -398,7 +67,7 @@ const store = {
     // guard exists to fix.
     const tried = new URLSearchParams(location.search).get('v') === want;
     const boot = document.getElementById('boot');
-    if (boot) boot.textContent = 'Updating…';
+    if (boot) boot.textContent = STR.updating;
     if (!tried) {
       // Cache-busted query so the reload cannot be served the same stale copy.
       location.replace(location.pathname + '?v=' + encodeURIComponent(want));
@@ -407,8 +76,7 @@ const store = {
     // Second time through: reloading did not help, so say so rather than
     // silently running a mismatched build.
     if (boot) {
-      boot.textContent = 'This page expects v' + want + ' but loaded v' + sim.VERSION +
-        '. Please empty your cache and reload.';
+      boot.textContent = STR.versionMismatch(want, sim.VERSION);
     }
   }
 }
@@ -417,10 +85,10 @@ const store = {
 // key, so every save already out there simply becomes slot one; the pointer
 // names the slot being played and every save path below goes through
 // saveKey, never sim.SAVE_KEY directly. ---
-const SLOT_KEY = 'tunnelbana_slot';
+const SLOT_KEY = K('slot');
 const SLOT_IDS = ['1', '2', '3'];
 const slotSaveKey = (s) => (s === '1' ? sim.SAVE_KEY : sim.SAVE_KEY + '_s' + s);
-const slotBakKeys = (s) => ['tunnelbana_save_bak', 'tunnelbana_save_bak2', 'tunnelbana_save_bak3']
+const slotBakKeys = (s) => [K('save_bak'), K('save_bak2'), K('save_bak3')]
   .map((k) => (s === '1' ? k : k + '_s' + s));
 let activeSlot = SLOT_IDS.includes(store.get(SLOT_KEY)) ? store.get(SLOT_KEY) : '1';
 let saveKey = slotSaveKey(activeSlot);
@@ -466,34 +134,20 @@ let paused = true; // boot into the menu
 const migratedFrom = g.migratedFrom;
 
 const $ = (id) => document.getElementById(id);
-const NUMFMT_KEY = 'tunnelbana_numfmt';
+const NUMFMT_KEY = K('numfmt');
 let numShort = store.get(NUMFMT_KEY) !== 'full';
-const SUFFIX = ['', 'K', 'M', 'B', 'T', 'Qa', 'Qi'];
-const grouped = (n) => Math.floor(n).toLocaleString('sv-SE').replace(/\s/g, '\u2009');
-function fmt(n) {
-  n = Math.floor(n);
-  if (!numShort || n < 1e5) return grouped(n);
-  if (!isFinite(n)) return '∞';
-  let v = n, i = 0;
-  // 999.5 not 1000: rounding to zero decimals at three digits otherwise prints
-  // "1000K" instead of rolling over to "1.00M".
-  while (v >= 999.5 && i < SUFFIX.length - 1) { v /= 1000; i++; }
-  return (v < 10 ? v.toFixed(2) : v < 100 ? v.toFixed(1) : v.toFixed(0)) + SUFFIX[i];
-}
-// Pass 02, section 02: the unit gets its own dimmer span so the value reads
-// as the value, and thousands group with a thin space, never a comma.
-const kr = (n) => grouped(n);
-const numHTML = (n, unit) => fmt(n) + '<span class="tb-num__unit">' + unit + '</span>';
+F.setShort(numShort);
+const fmt = (n) => F.fmtCount(n);
 // Player-typed names (0.13.1) and imported saves reach innerHTML sinks; every
 // name interpolated into markup goes through this, no exceptions.
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 
 // --- Theme (light mode is a testing aid; dark is the designed theme) ---
-const THEME_KEY = 'tunnelbana_theme';
-const UI_SCALE_KEY = 'tunnelbana_ui_scale';
-const CONTRAST_KEY = 'tunnelbana_contrast';
-const NIGHT_STYLE = 'basemap/tunnelbana-night.json';
-const LIGHT_STYLE = 'https://tiles.openfreemap.org/styles/positron';
+const THEME_KEY = K('theme');
+const UI_SCALE_KEY = K('ui_scale');
+const CONTRAST_KEY = K('contrast');
+const NIGHT_STYLE = CITY.map.nightStyle;
+const LIGHT_STYLE = CITY.map.lightStyle;
 const urlTheme = new URLSearchParams(location.search).get('theme');
 let theme = (urlTheme || store.get(THEME_KEY)) === 'light' ? 'light' : 'dark';
 let uiScale = ['large', 'xl'].includes(store.get(UI_SCALE_KEY)) ? store.get(UI_SCALE_KEY) : 'standard';
@@ -548,14 +202,14 @@ if (window.maplibregl) {
     map = new maplibregl.Map({
       container: 'basemap',
       style: theme === 'light' ? LIGHT_STYLE : NIGHT_STYLE,
-      center: [18.0640, 59.3230], // the hub and its first reach, not the empty south
-      zoom: 12.0,
-      minZoom: 10.3,
-      maxZoom: 14.5,
+      center: CITY.map.center, // the opening line and its first reach
+      zoom: CITY.map.zoom,
+      minZoom: CITY.map.minZoom,
+      maxZoom: CITY.map.maxZoom,
       // The camera stays with the city (owner ruling 2026-08-08): the region
       // plan's maximum radius plus margin, so nobody pans to open sea looking
       // for a game that is not there.
-      maxBounds: [[17.5, 59.03], [18.65, 59.58]],
+      maxBounds: CITY.map.maxBounds,
       attributionControl: false,
       dragRotate: false,
       pitchWithRotate: false,
@@ -651,7 +305,7 @@ function gameLayer() {
 
 // Bring the camera home to the hub (new game, reset, import).
 function homeCamera() {
-  if (map) map.flyTo({ center: [18.0640, 59.3230], zoom: 12.0, duration: 900 });
+  if (map) map.flyTo({ center: CITY.map.center, zoom: CITY.map.zoom, duration: 900 });
 }
 
 function geoAt(p) {
@@ -691,8 +345,8 @@ function menuView(which) {
   if (which === 'settings') {
     $('settings-reset').textContent = STR.reset;
     $('settings-theme').textContent = theme === 'light' ? STR.themeLight : STR.themeDark;
-    $('settings-scale').textContent = uiScale === 'xl' ? 'Extra large' : uiScale === 'large' ? 'Large' : 'Standard';
-    $('settings-contrast').textContent = contrast === 'high' ? 'High' : 'Default';
+    $('settings-scale').textContent = STR.scaleNames[uiScale];
+    $('settings-contrast').textContent = STR.contrastNames[contrast];
     $('settings-numfmt').textContent = numShort ? STR.numShort : STR.numFull;
     $('settings-notes').textContent = notesOn ? STR.notesOn : STR.notesOff;
     $('settings-pulse').textContent = pulseOn ? STR.pulseOn : STR.pulseOff;
@@ -702,8 +356,7 @@ function menuView(which) {
     $('settings-restore').hidden = !store.get(BAK_KEY);
     $('settings-restore').textContent = STR.restoreBtn;
     $('settings-importfile').textContent = STR.importFileBtn;
-    $('save-status').textContent = 'automatic, local' +
-      (persisted === true ? ' · persistent' : persisted === false ? ' · best-effort' : '');
+    $('save-status').textContent = STR.saveStatus(persisted);
     $('import-text').hidden = true;
   }
 }
@@ -771,14 +424,12 @@ function slotInfo(s) {
 function relTime(ts) {
   if (!Number.isFinite(ts)) return '';
   const s = (Date.now() - ts) / 1000;
-  if (s < 90) return 'just now';
-  if (s < 3600) return Math.round(s / 60) + ' min ago';
-  if (s < 86400) return Math.round(s / 3600) + ' h ago';
-  if (s < 172800) return 'yesterday';
-  return Math.round(s / 86400) + ' days ago';
+  if (s < 90) return STR.rel.now;
+  if (s < 3600) return STR.rel.min(Math.round(s / 60));
+  if (s < 86400) return STR.rel.h(Math.round(s / 3600));
+  if (s < 172800) return STR.rel.yesterday;
+  return STR.rel.days(Math.round(s / 86400));
 }
-// Before the map needs two colours the station count says more than the era.
-const SLOT_ERA_WORD = ['', '', '', 'red line era', 'blue line era', 'the modern city'];
 function renderSlots() {
   slotArmed = null; // a re-render always disarms the confirm
   $('slots-sub').textContent = STR.slotsSub;
@@ -799,10 +450,13 @@ function renderSlots() {
         '<span class="tb-slot__meta">' + STR.slotBadMeta + '</span></span>' +
         '<span class="tb-slot__stamp">&mdash;</span></button>';
     }
-    const mark = info.era >= 3 ? SLOT_ERA_WORD[info.era] : info.stations + ' ' + STR.slotStations;
+    // Before the map needs two colours the station count says more than the
+    // era (Stockholm); a Japanese city names its era's line from the start.
+    const word = info.era >= STR.slotEraFrom ? STR.slotEraWord[info.era] : '';
+    const mark = word || info.stations + ' ' + STR.slotStations;
     return '<button class="tb-slot" data-slot="' + s + '"' + (current ? ' aria-current="true"' : '') + '>' +
       '<span class="tb-slot__n">' + s + '</span><span class="tb-slot__body">' +
-      '<span class="tb-slot__name">' + STR.slotName + '</span>' +
+      '<span class="tb-slot__name">' + (STR.slotName || CITY.name[LOCALE] || CITY.id) + '</span>' +
       '<span class="tb-slot__meta"><b>' + info.year + '</b> · ' + mark +
       ' · <b>' + fmt(info.delivered) + '</b> ' + STR.slotRiders + '</span></span>' +
       '<span class="tb-slot__stamp">' + (current ? STR.slotNow : relTime(info.savedAt)) + '</span></button>';
@@ -963,7 +617,7 @@ $('council-close').addEventListener('click', () => setCouncilOpen(false));
 function makeFloating(id, onResize) {
   const el = $(id);
   const head = el.querySelector('.tb-panel__head');
-  const KEY = 'tunnelbana_float_' + id;
+  const KEY = K('float_' + id);
   el.style.resize = 'both';
   el.style.overflow = 'auto';
   head.style.cursor = 'grab';
@@ -1036,20 +690,24 @@ const COUNCIL_GLYPHS = {
   taken: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4 10-10"></path></svg>',
 };
 
+// A decision's words: the language's own if it has them, else the sim's.
+const decWords = (d) => ({ name: d.name, desc: d.desc, effectText: d.effectText, ...(STR.council[d.id] || {}) });
+
 function councilCard(d) {
   const state = sim.councilState(g, d);
   const visual = state === 'era' ? 'locked' : state;
   const glyph = state === 'taken' ? COUNCIL_GLYPHS.taken : COUNCIL_GLYPHS[d.cat];
-  const catWord = d.cat.charAt(0).toUpperCase() + d.cat.slice(1);
+  const catWord = STR.councilCats[d.cat] || d.cat;
+  const W = decWords(d);
   let foot;
   if (state === 'taken') {
-    foot = '<div class="tb-dec__effect">' + d.effectText + '</div>';
+    foot = '<div class="tb-dec__effect">' + W.effectText + '</div>';
   } else if (state === 'era') {
     foot = '<div class="tb-dec__foot"><span class="tb-dec__need">' + STR.councilEra + ' ' +
       sim.ERAS[sim.COUNCIL_TIERS[d.tier].era].year + '</span><span>' + catWord + '</span></div>';
   } else if (state === 'locked') {
     const needNames = (d.needs || []).filter((n) => !g.council[n])
-      .map((n) => sim.COUNCIL.find((x) => x.id === n).name).join(', ');
+      .map((n) => decWords(sim.COUNCIL.find((x) => x.id === n)).name).join('、');
     foot = '<div class="tb-dec__foot"><span class="tb-dec__need">' + STR.councilNeeds + ' ' +
       needNames + ' ' + STR.councilFirst + '</span><span>' + catWord + '</span></div>';
   } else if (state === 'unaffordable') {
@@ -1061,16 +719,16 @@ function councilCard(d) {
   }
   return '<button class="tb-dec" data-dec="' + d.id + '" data-state="' + visual + '">' +
     '<div class="tb-dec__head"><span class="tb-dec__glyph">' + glyph + '</span>' +
-    '<span class="tb-dec__name">' + d.name + '</span>' +
-    '<span class="tb-dec__cost">' + d.pk + '<span class="tb-num__unit">pk</span></span></div>' +
-    '<span class="tb-dec__desc">' + d.desc + '</span>' + foot + '</button>';
+    '<span class="tb-dec__name">' + W.name + '</span>' +
+    '<span class="tb-dec__cost">' + d.pk + '<span class="tb-num__unit">' + STR.councilUnit + '</span></span></div>' +
+    '<span class="tb-dec__desc">' + W.desc + '</span>' + foot + '</button>';
 }
 
 function renderCouncil() {
-  $('council-sub').textContent = Math.floor(g.pk) + ' pk ' + STR.councilInHand;
+  $('council-sub').textContent = STR.councilInHand + ' ' + Math.floor(g.pk) + ' ' + STR.councilUnit;
   const cols = sim.COUNCIL_TIERS.map((t, ti) => {
     const cards = sim.COUNCIL.filter((d) => d.tier === ti).map(councilCard).join('');
-    return '<div class="tb-council__col"><div class="tb-council__tier">' + t.name +
+    return '<div class="tb-council__col"><div class="tb-council__tier">' + (STR.councilTiers[ti] || t.name) +
       ' · ' + sim.ERAS[t.era].year + '</div>' + cards + '</div>';
   });
   $('council-tree').innerHTML = cols.join('');
@@ -1132,7 +790,7 @@ $('menu-open').textContent = STR.menuBtn;
 
 // Rail collapse, remembered between sessions: a second-monitor player who wants
 // the map may want it every time.
-const RAIL_KEY = 'tunnelbana_rail';
+const RAIL_KEY = K('rail');
 function setRail(hidden) {
   document.body.classList.toggle('rail-hidden', hidden);
   const t = $('rail-toggle');
@@ -1148,7 +806,7 @@ setRail(store.get(RAIL_KEY) === 'hidden');
 
 // The live readout is useful until it sits over the railhead. Like the shop
 // rail, it remembers the player's choice, while the identity stays visible.
-const STATUS_KEY = 'tunnelbana_status';
+const STATUS_KEY = K('status');
 function setStatus(hidden) {
   document.body.classList.toggle('status-hidden', hidden);
   const t = $('status-toggle');
@@ -1185,29 +843,21 @@ $('fb-open').addEventListener('click', () => {
   if (!p.hidden) $('fb-text').focus();
 });
 $('fb-close').addEventListener('click', () => { $('fb-panel').hidden = true; });
-const FEEDBACK_TO = 'matthew@maclaine.se';
-// Own infrastructure, no third party: a Pages Function on maclaine.se stores
-// the note (functions/api/feedback.js in the site repo). One click, no mail
-// client, nothing leaves the owner's own Cloudflare account.
-const FEEDBACK_URL = 'https://maclaine.se/api/feedback';
-
-// --- Milestone telemetry (v12): the game phones home the moments the
-// balance conversation actually needs (how far real players get, how long
-// eras take, on which build) and nothing else. No identifier, no save
-// contents, no position: the payload IS the milestone. It lands next to the
-// feedback notes in the owner's own Cloudflare account
-// (functions/api/pulse.js in the site repo), Settings can turn it off, and
-// a dev copy never sends. ---
-const PULSE_URL = 'https://maclaine.se/api/pulse';
-const PULSE_KEY = 'tunnelbana_pulse';
-let pulseOn = store.get(PULSE_KEY) !== '0';
-// galaxy.click does not host games, it iframes the site copy. The site's
-// _headers only lets maclaine.se be framed by galaxy, so on this hostname
-// "inside a frame" and "on galaxy" are the same fact. The itch build is a
-// separate upload served from itch.zone and matches the first test instead.
+// Feedback and milestone pings went to the original author's own server.
+// A fork must not send there (spec 01 §0.4, §3.18): they run only when the
+// pack names its own endpoints, and otherwise the buttons and the settings
+// row are hidden outright. The code stays, so a future owner can point it
+// at their own infrastructure.
+const FB = (CITY.credits && CITY.credits.feedback) || null;
+const FEEDBACK_TO = FB ? FB.mail || '' : '';
+const FEEDBACK_URL = FB ? FB.url || '' : '';
+const PULSE_URL = FB ? FB.pulse || '' : '';
+const PULSE_KEY = K('pulse');
+let pulseOn = !!PULSE_URL && store.get(PULSE_KEY) !== '0';
 const framed = (() => { try { return window.self !== window.top; } catch { return true; } })();
-const pulseSurface = /itch\.zone$|itch\.io$/.test(location.hostname) ? 'itch'
-  : /maclaine\.se$/.test(location.hostname) ? (framed ? 'galaxy' : 'site') : '';
+const pulseSurface = PULSE_URL ? (/itch\.zone$|itch\.io$/.test(location.hostname) ? 'itch' : (framed ? 'framed' : 'site')) : '';
+for (const id of ['fb-open', 'menu-feedback']) $(id).hidden = !FEEDBACK_URL && !FEEDBACK_TO;
+$('pulse-row').hidden = !PULSE_URL;
 function pulse(ev, year) {
   if (!pulseOn || !pulseSurface) return;
   try {
@@ -1241,8 +891,9 @@ function pulse(ev, year) {
 // itch build older than the deploy), because a submit button that silently
 // eats what someone bothered to type is the worst outcome available.
 async function submitFeedback(text) {
-  const ctx = 'v' + sim.VERSION + ' · era ' + sim.eraYear(g) + ' · ' + sim.stationCount(g) +
+  const ctx = 'v' + sim.VERSION + ' · ' + CITY.id + ' · era ' + sim.eraYear(g) + ' · ' + sim.stationCount(g) +
     ' stations · ' + sim.CATALOG.filter((i) => g.owned[i.id]).length + ' upgrades';
+  if (!FEEDBACK_URL) return mailFallback(text, ctx);
   try {
     const res = await fetch(FEEDBACK_URL, {
       method: 'POST',
@@ -1255,7 +906,8 @@ async function submitFeedback(text) {
 }
 
 function mailFallback(text, ctx) {
-  const body = text + '\n\n---\nTunnelbana · ' + ctx;
+  const body = text + '\n\n---\n' + STR.gameTitle + ' · ' + ctx;
+  if (!FEEDBACK_TO) return false;
   let copied = false;
   try {
     navigator.clipboard.writeText(body);
@@ -1294,6 +946,7 @@ $('menu-quit').addEventListener('click', () => {
 });
 $('settings-numfmt').addEventListener('click', () => {
   numShort = !numShort;
+  F.setShort(numShort);
   store.set(NUMFMT_KEY, numShort ? 'short' : 'full');
   $('settings-numfmt').textContent = numShort ? STR.numShort : STR.numFull;
   updateUI();
@@ -1306,13 +959,13 @@ $('settings-scale').addEventListener('click', () => {
   uiScale = uiScale === 'standard' ? 'large' : uiScale === 'large' ? 'xl' : 'standard';
   store.set(UI_SCALE_KEY, uiScale);
   applyAccessibility();
-  $('settings-scale').textContent = uiScale === 'xl' ? 'Extra large' : uiScale === 'large' ? 'Large' : 'Standard';
+  $('settings-scale').textContent = STR.scaleNames[uiScale];
 });
 $('settings-contrast').addEventListener('click', () => {
   contrast = contrast === 'default' ? 'high' : 'default';
   store.set(CONTRAST_KEY, contrast);
   applyAccessibility();
-  $('settings-contrast').textContent = contrast === 'high' ? 'High' : 'Default';
+  $('settings-contrast').textContent = STR.contrastNames[contrast];
 });
 $('settings-export').addEventListener('click', () => {
   const btn = $('settings-export');
@@ -1325,7 +978,7 @@ $('settings-export').addEventListener('click', () => {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([packed], { type: 'application/octet-stream' }));
     const d = new Date();
-    a.download = 'tunnelbana-' + d.getFullYear() +
+    a.download = 'metros-' + CITY.id + '-' + d.getFullYear() +
       String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0') + '.tbsave';
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
@@ -1460,32 +1113,11 @@ window.addEventListener('keydown', (e) => {
 // --- Era moments: FRONT PAGES (pass 03 section a). One template, six
 // datasets; the copy is the design team's, verbatim; the NUMBERS are live,
 // which is the whole point: the paper reports the reader's own railway. ---
-const ERA_NEWS = {
-  1952: { era: 'var(--tb-era-1952)', date: 'STOCKHOLM · 26 OKTOBER 1952', kicker: 'VÄSTERORT', ed: 'SÖNDAGSUPPLAGA', price: '20 ÖRE',
-    head: 'Tunnelbanan når västerut mot Vällingby',
-    lede: 'The first branch strikes west this week, out toward the new suburbs, and the map grows a second arm. The reader’s network already carries a city that was walking a year ago.',
-    next: 'Plans stir to join the lines through the centre. The city watches T-Centralen.' },
-  1957: { era: 'var(--tb-era-1957)', date: 'STOCKHOLM · 24 NOVEMBER 1957', kicker: 'GENOM STADEN', ed: 'SÖNDAGSUPPLAGA', price: '25 ÖRE',
-    head: 'The line reaches under the water to T-Centralen',
-    lede: 'Stockholm’s underground crossed the water this morning, and the whole city is now one ride from the centre. Norrmalm opens to building, every fare across the water is worth more, and the network the reader has built stands at the figures below.',
-    next: 'A second colour is drawn in committee. Röda linjen is spoken of, south toward Fruängen.' },
-  1964: { era: 'var(--tb-era-1964)', date: 'STOCKHOLM · 5 APRIL 1964', kicker: 'RÖDA LINJEN', ed: 'SÖNDAGSUPPLAGA', price: '30 ÖRE',
-    head: 'A second colour on the map: the red line opens south',
-    lede: 'The red line runs today from the centre toward Fruängen, and for the first time the diagram needs two colours to explain itself. The city the reader is building has become a network, not a line.',
-    next: 'Deep boring is proposed under Järvafältet. A blue line, they are calling it.' },
-  1975: { era: 'var(--tb-era-1975)', date: 'STOCKHOLM · 31 AUGUSTI 1975', kicker: 'BLÅ LINJEN', ed: 'SÖNDAGSUPPLAGA', price: '75 ÖRE',
-    head: 'The blue line opens under Järvafältet',
-    lede: 'A third colour reaches the northwest suburbs today, deep-bored and blasted through rock, its stations left as raw cave. Three lines now thread the centre, and the reader’s map looks like a city’s.',
-    next: 'The plan nears its last page. What comes after the plan is the reader’s to decide.' },
-  2000: { era: 'var(--tb-era-2000)', date: 'STOCKHOLM · 1 JANUARI 2000', kicker: 'STADEN', ed: 'MILLENNIEUPPLAGA', price: '10 KRONOR',
-    head: 'A new century rides the network you built',
-    lede: 'Every constraint is gone; the plan is complete and the city is yours to shape freely. The whole map is lit, every station on it connected, and the reader is free to build for its own sake.',
-    next: 'There is no next page in the plan. There is the map, and the reader.' },
-  slut: { era: 'var(--tb-era-2000)', date: 'STOCKHOLM · SLUTSTATION', kicker: 'SLUTSTATION', ed: 'SISTA UPPLAGAN', price: 'TACK',
-    head: 'The arc completes: 1950 to now, one continuous ride',
-    lede: 'Nothing stops. The trains keep running, the fares keep landing, and the city keeps the light you gave it. This is the last front page the paper will print, and it is about the reader.',
-    next: 'The trains keep running.' },
-};
+// The pages themselves are the city's (its strings.news, keyed by era key,
+// plus 'slut' for the ending); the era colour is the pack's.
+const ERA_NEWS = Object.fromEntries(Object.entries(STR.news).map(([key, e]) => [key, {
+  ...e, era: 'var(--tb-era-' + (key === 'slut' ? sim.ERAS[sim.ERAS.length - 1].key : key) + ')',
+}]));
 
 // The motif: the network so far, recoloured to the era (design team's
 // representative cut; a live-network drawing is a later refinement).
@@ -1503,6 +1135,8 @@ function showFrontPage(key) {
   if (!e) return;
   momentOpen = true;
   const n = $('news');
+  const mast = n.querySelector('.tb-news__name');
+  if (mast) mast.textContent = STR.newsPaper;
   n.style.setProperty('--tb-era', e.era);
   $('news-ed').textContent = e.ed;
   $('news-date').textContent = e.date;
@@ -1518,10 +1152,10 @@ function showFrontPage(key) {
   $('news-s2k').textContent = slut ? STR.newsStationsBuilt : STR.newsStationsOpen;
   if (slut) {
     const h = Math.floor(g.playedS / 3600), m = Math.floor((g.playedS % 3600) / 60);
-    $('news-s3').textContent = h + ' h ' + m + ' m';
+    $('news-s3').textContent = STR.newsPlayedHM(h, m);
     $('news-s3k').textContent = STR.newsPlayed;
   } else {
-    $('news-s3').innerHTML = numHTML(g.grossLife, ' kr');
+    $('news-s3').innerHTML = numHTML(g.grossLife);
     $('news-s3k').textContent = STR.newsTurnover;
   }
   // The kungörelse (owner ask 2026-08-09): the lead column's empty depth now
@@ -1531,13 +1165,9 @@ function showFrontPage(key) {
   const e2 = slut ? null : sim.nextEra(g);
   $('news-notice-k').textContent = STR.newsNoticeK;
   if (e2) {
-    const wants = [fmt(e2.delivered) + ' riders carried', e2.pk + ' in political trust'];
-    for (const b of sim.planBlockers(g)) {
-      wants.push('the ' + b.name + ' corridor built out with ' + (b.total - b.built) + ' stations to go');
-    }
-    $('news-notice-b').textContent = 'Ahead of the ' + e2.year +
-      ' charter the government asks ' + wants.slice(0, -1).join(', ') +
-      ' and ' + wants[wants.length - 1] + '.';
+    const wants = [STR.newsWantRiders(fmt(e2.delivered)), STR.newsWantTrust(e2.pk)];
+    for (const b of sim.planBlockers(g)) wants.push(STR.newsWantCorridor(b.name, b.total - b.built));
+    $('news-notice-b').textContent = STR.newsNotice(e2.year, wants);
     $('news-notice').hidden = false;
   } else if (!slut) {
     $('news-notice-b').textContent = STR.newsNoticeDone;
@@ -1552,7 +1182,7 @@ function showFrontPage(key) {
   $('news-foot2').innerHTML = '<b style="color:var(--tb-ink);font-weight:400">' + STR.newsNext + '</b> ';
   $('news-foot2').append(e.next);
   $('moment').hidden = false;
-  sfx.eraSting(key === 'slut' ? 4 : Math.max(0, g.era - 1));
+  sfx.eraSting(key === 'slut' ? 4 : Math.max(0, Math.min(4, g.era - 1)));
   save();
 }
 function showMoment(year) {
@@ -1607,21 +1237,30 @@ function canvasPos(e) {
   return { x: e.clientX - r.left, y: e.clientY - r.top };
 }
 
+// A refusal, in words: 'nobuild' names the ground it refuses.
+function problemText(problem, geo) {
+  const t = STR.problems[problem];
+  return typeof t === 'function' ? t(sim.nobuildAt(geo) || '') : t;
+}
+
 function dragState(p) {
-  const snap = render.nearAnchor(g, p, dragRef.li);
+  const snap = render.nearAnchor(g, p, dragRef.li, dragRef.end);
   const geo = snap !== null ? ANCHORS[snap].geo : geoAt(p);
   const cost = sim.extensionCost(g, dragRef.li, dragRef.end, geo, snap);
   const problem = sim.placementProblem(g, dragRef.li, dragRef.end, geo, snap);
+  const closes = snap !== null && sim.canCloseLoopAt(g, dragRef.li, dragRef.end, snap);
   let label = !problem || problem === 'money'
-    ? (problem === 'money' ? STR.problems.money + ' ' : '') + fmt(cost) + ' kr'
-    : STR.problems[problem];
-  const junction = sim.junctionPreview(g, dragRef.li, geo);
-  if (junction && (!problem || problem === 'money')) {
+    ? (problem === 'money' ? STR.problems.money + ' ' : '') + money(cost)
+    : problemText(problem, geo);
+  const junction = closes ? null : sim.junctionPreview(g, dragRef.li, geo);
+  if (closes && (!problem || problem === 'money')) {
+    label += ' · ' + STR.canvas.closeLoop;
+  } else if (junction && (!problem || problem === 'money')) {
     // Landing on another line's station: this extension shares it.
     label += ' · ' + STR.junction + ' ' + junction.name;
   } else if (snap === null && (!problem || problem === 'money')) {
     // A free spot must say what it is worth, not just what it costs.
-    label += ' · ' + sim.freeSpotValue(g, geo) + 'x demand';
+    label += ' · ' + STR.demandX(sim.freeSpotValue(g, geo));
   }
   return { x: p.x, y: p.y, li: dragRef.li, end: dragRef.end, snap, geo, cost, problem, label };
 }
@@ -1642,12 +1281,12 @@ function showBuildPicker(anchor, options, p) {
   head.className = 'tb-panel__head';
   const title = document.createElement('span');
   title.className = 'tb-panel__title';
-  title.textContent = 'BUILD WITH';
+  title.textContent = STR.picker.title;
   const info = document.createElement('span');
   info.className = 'tb-build-info';
   info.tabIndex = 0;
   info.textContent = 'i';
-  info.title = 'Nearby continuations and their costs are shown here. To build from another line end, drag that end to this stake.';
+  info.title = STR.picker.info;
   head.append(title, info);
   const body = document.createElement('div');
   body.className = 'tb-panel__body';
@@ -1659,9 +1298,9 @@ function showBuildPicker(anchor, options, p) {
     button.style.borderLeftColor = L.color;
     button.style.borderLeftWidth = '3px';
     button.disabled = o.problem === 'money';
-    button.title = o.problem === 'money' ? 'Need ' + fmt(o.cost) + ' kr' : 'Build from this end';
-    button.textContent = L.name + ' from ' + sim.endStation(g, o.li, o.end).name + ' · ' +
-      (o.problem === 'money' ? 'Need ' : '') + fmt(o.cost) + ' kr';
+    button.title = o.problem === 'money' ? STR.picker.need + money(o.cost) : STR.picker.buildFrom;
+    button.textContent = STR.picker.fromEnd(L.name, sim.endStation(g, o.li, o.end).name) + ' · ' +
+      (o.problem === 'money' ? STR.picker.need : '') + money(o.cost);
     body.appendChild(button);
   });
   buildPicker.replaceChildren(head, body);
@@ -1682,6 +1321,20 @@ buildPicker.addEventListener('click', (e) => {
   dragRef = null;
   hideBuildPicker();
 });
+
+// Build a plan stake that sits on a standing station, from the plan's own
+// line at whichever end touches the stop before it.
+function planStakeEnd(ps) {
+  const L = g.lines[ps.line];
+  const headA = L.stations[0].anchor;
+  if (ps.close) return headA === ps.anchor ? 'tail' : 'head';
+  return ps.prev !== null && headA === ps.prev ? 'head' : 'tail';
+}
+function buildPlanStake(ps) {
+  dragRef = { li: ps.line, end: planStakeEnd(ps) };
+  tryExtend(dragState(render.project(ANCHORS[ps.anchor].geo)));
+  dragRef = null;
+}
 
 wrap.addEventListener('pointerdown', (e) => {
   if (paused || e.button === 2) return;
@@ -1735,6 +1388,17 @@ wrap.addEventListener('pointerdown', (e) => {
   // open its panel. The train remains inspectable from its visible body just
   // outside that core, rather than swallowing the station beneath it.
   const stationHit = render.nearStationAt(g, p);
+  // A plan stake on a station already standing (a stop to pass through, or
+  // the ring's closing point): the click builds it from the plan's own line,
+  // at whichever end touches the stop before it. The station's own core
+  // still opens its panel, which offers the same build.
+  const ps = render.nearPlanStake(g, p);
+  if (ps && !(stationHit && stationHit.core) && ps.line !== null && g.lines[ps.line] && !g.lines[ps.line].loop) {
+    buildPlanStake(ps);
+    e.stopPropagation();
+    e.preventDefault();
+    return;
+  }
   if (stationHit && stationHit.core) {
     selectStation({ li: stationHit.li, i: stationHit.i });
     e.stopPropagation();
@@ -1776,6 +1440,7 @@ wrap.addEventListener('pointerdown', (e) => {
     const ap = render.project(ANCHORS[a].geo);
     const options = [];
     for (let li = 0; li < g.lines.length; li++) {
+      if (g.lines[li].loop) continue; // a ring has no end to build from
       for (const end of ['head', 'tail']) {
         const from = sim.endStation(g, li, end);
         options.push({
@@ -1850,7 +1515,7 @@ function insertSpot(p) {
   const cost = sim.insertCost(g, m.li);
   return {
     li: m.li, seg: m.seg, geo: sim.insertMidGeo(g, m.li, m.seg), ok: !problem,
-    label: (problem === 'money' ? STR.problems.money + ' ' : STR.insertLabel + ' · ') + fmt(cost) + ' kr',
+    label: (problem === 'money' ? STR.problems.money + ' ' : STR.insertLabel + ' · ') + money(cost),
   };
 }
 
@@ -1976,7 +1641,7 @@ function stationUpgRow(kind) {
   const cost = sim.stationBulkCost(g, selected.li, selected.i, kind, n);
   btn.textContent = STR.upgRow[kind] +
     ' ' + STR.lvl + ' ' + lvl + '/' + cap +
-    (room <= 0 ? '' : ' · ' + (n > 1 ? '×' + n + ' ' : '') + kr(cost) + ' kr');
+    (room <= 0 ? '' : ' · ' + (n > 1 ? '×' + n + ' ' : '') + money(cost));
   // A capped ladder says why, so "disabled" is information (pass 02, §03),
   // and hover says what the level actually buys (owner ask, 2026-08-07).
   btn.title = STR.upgWhat[kind];
@@ -2032,12 +1697,13 @@ function updateTrainPanel() {
   $('ti-verb').textContent = verb;
   let where = '';
   if (v.state === 'running') {
-    where = T.towards + ' ' + (v.towards || '') +
-      (v.nextStop ? ', ' + T.between + ' ' + v.nextStop : '');
+    // A ring train runs 右回り or 左回り, never toward a terminus.
+    where = (v.loopDir ? (v.loopDir === 'cw' ? STR.loopCW : STR.loopCCW) : T.towards + ' ' + (v.towards || '')) +
+      (v.nextStop ? (LOCALE === 'ja' ? '、' : ', ') + T.between + ' ' + v.nextStop : '');
   } else if (v.state === 'dwelling') {
-    where = T.boardingAt + ' ' + (v.at || '');
+    where = (T.boardingAt ? T.boardingAt + ' ' : '') + (v.at || '');
   } else if (v.state === 'parked') {
-    where = T.at + ' ' + (v.at || '') +
+    where = (T.at ? T.at + ' ' : '') + (v.at || '') +
       (v.stackSize > 1 ? ', ' + v.stackIndex + ' ' + T.stackOf + ' ' + v.stackSize + ' ' + T.inTheStack : '');
   } else {
     where = T.stabledWhere;
@@ -2124,7 +1790,9 @@ function updateStationPanel() {
   // The pencil only shows on stations the player built; anchors are real
   // stations and keep their real names (README rule).
   $('sp-rename').hidden = st.anchor !== null;
-  $('sp-tier').textContent = STR.tiers[st.tier];
+  // Station numbering beside the tier (spec 01 §4 proposal 1).
+  const codes = st.anchor !== null && ANCHORS[st.anchor].codes ? ANCHORS[st.anchor].codes.join('·') : '';
+  $('sp-tier').textContent = STR.tierWithCodes(STR.tiers[st.tier], codes);
   const waiting = Math.floor(sim.waitingAt(g, selected.li, selected.i));
   const crowd = Math.round(100 * waiting / (sim.stationCap(g) * st.mult));
   const upk = (B.stationUpkeep[st.tier] + B.upgradeUpkeep * (st.ent + st.gates)).toFixed(2);
@@ -2135,7 +1803,7 @@ function updateStationPanel() {
     row(STR.panelDemand, st.mult.toFixed(2) + '×') +
     row(STR.panelWaiting, waiting) +
     row(STR.panelCrowd, crowd + '%', crowd >= 60 ? 'tb-row__v--down' : '') +
-    row(STR.panelUpkeep, upk + ' kr/s');
+    row(STR.panelUpkeep, rate(Number(upk)));
   // Where this platform's crowd wants to go (read from the OD weights).
   const dirs = sim.odWeights(g, selected.li, selected.i);
   $('sp-dest').innerHTML = dirs.length
@@ -2149,10 +1817,10 @@ function updateStationPanel() {
     tierBtn.disabled = true;
   } else {
     const cost = sim.upgradeCost(g, selected.li, selected.i, 'tier');
-    const gated = st.tier === 2 && sim.eraYear(g) < B.tier3Era;
+    const gated = st.tier === 2 && g.era < B.tier3Era;
     tierBtn.textContent = gated
       ? STR.tierEraGate
-      : STR.tierUp[st.tier] + ' · ' + fmt(cost.kr) + ' kr' + (cost.pk ? ' + ' + cost.pk + ' ' + STR.trust : '');
+      : STR.tierUp[st.tier] + ' · ' + money(cost.kr) + (cost.pk ? ' + ' + STR.trust + ' ' + cost.pk : '');
     tierBtn.disabled = !sim.canUpgradeStation(g, selected.li, selected.i, 'tier');
   }
   stationUpgRow('ent');
@@ -2170,7 +1838,7 @@ function updateStationPanel() {
   let charterId = null;
   if (st.tier >= 3) {
     for (const b of sim.planBlockers(g)) {
-      const proj = PROJECT_OF_CORRIDOR[b.id];
+      const proj = projectOf(b.id);
       if (proj && !g.owned[proj]) { charterId = proj; break; }
     }
   }
@@ -2178,16 +1846,16 @@ function updateStationPanel() {
   if (charterId) {
     const cost = sim.shopCost(g, charterId);
     const ok = sim.canBuy(g, charterId);
-    ch.textContent = STR.charterHere + ' ' + STR.shop[charterId].name + ' · ' + cost + ' ' + STR.trust;
+    ch.textContent = STR.charterHere + ' ' + STR.shop[charterId].name + ' · ' + STR.trust + ' ' + cost;
     ch.disabled = !ok;
-    ch.title = ok ? STR.shop[charterId].desc : STR.charterNeeds + ' ' + cost + ' ' + STR.trust;
+    ch.title = ok ? STR.shop[charterId].desc : STR.charterNeeds + ' ' + STR.trust + ' ' + cost;
     ch.dataset.charter = charterId;
   }
   const fb = $('sp-found');
   const showFound = st.tier >= 3;
   fb.hidden = !showFound;
   if (showFound) {
-    fb.textContent = STR.foundBtn + ' · ' + fmt(B.foundLineKr) + ' kr + ' + B.foundLinePk + ' ' + STR.trust;
+    fb.textContent = STR.foundBtn + ' · ' + money(B.foundLineKr) + ' + ' + STR.trust + ' ' + B.foundLinePk;
     fb.disabled = !sim.canFoundLine(g, selected.li, selected.i);
   }
   // The service pattern (Trafikledning): whether the express calls here.
@@ -2205,22 +1873,43 @@ function updateStationPanel() {
   fixB.hidden = !broken;
   if (broken) {
     const fixCost = sim.incidentFixCost(g);
-    fixB.textContent = STR.fixCrew + ' · ' + fmt(fixCost) + ' kr';
+    fixB.textContent = STR.fixCrew + ' · ' + money(fixCost);
     fixB.disabled = g.money < fixCost;
   }
   // The way out for an accidental mid-line stop (2026-08-09): interior
   // stations get the demolish the ends always had on right-click.
+  // On a ring every stop is interior, and removing one opens the ring.
   const rmB = $('sp-remove');
-  const interior = selected.i > 0 && selected.i < L.stations.length - 1;
+  const interior = L.loop || (selected.i > 0 && selected.i < L.stations.length - 1);
   rmB.hidden = !interior;
   if (interior) {
-    rmB.textContent = STR.removeBtn + ' · ' + fmt(B.demolishCost) + ' kr';
+    rmB.textContent = STR.removeBtn + ' · ' + money(B.demolishCost);
     rmB.disabled = !sim.canRemoveStation(g, selected.li, selected.i);
+  }
+  // The end's demolish, here as well as on right-click (spec 01 §4 proposal
+  // 4): a touch screen has no right button.
+  const deB = $('sp-demolish');
+  const isEnd = !L.loop && (selected.i === 0 || selected.i === L.stations.length - 1);
+  deB.hidden = !isEnd;
+  if (isEnd) {
+    deB.textContent = STR.demolishEndBtn + ' · ' + money(B.demolishCost);
+    deB.disabled = !sim.canDemolish(g, selected.li, selected.i === 0 ? 'head' : 'tail');
+  }
+  // A plan stake on this station for another line: build it from here.
+  const plB = $('sp-plan');
+  const ps = st.anchor === null ? null : sim.planStakes(g).find((x) =>
+    x.anchor === st.anchor && (x.via || x.close) && x.line !== null && g.lines[x.line] && !g.lines[x.line].loop);
+  plB.hidden = !ps;
+  if (ps) {
+    const cost = sim.extensionCost(g, ps.line, planStakeEnd(ps), st.geo, ps.anchor);
+    plB.textContent = (ps.close ? STR.canvas.closeLoop : STR.aims.plan + ' ' + g.lines[ps.line].name) + ' · ' + money(cost);
+    plB.disabled = g.money < cost;
+    plB.dataset.anchor = String(ps.anchor);
   }
   // Left behind per minute: the headline diagnostic (abandonment).
   const left = Math.round(L.left60[selected.i] * 60);
   const lb = $('sp-left');
-  lb.textContent = left > 0 ? 'Left behind: ' + fmt(left) + '/min' : '';
+  lb.textContent = left > 0 ? STR.leftBehind(fmt(left)) : '';
   lb.hidden = left <= 0;
 }
 
@@ -2237,6 +1926,27 @@ $('sp-charter').addEventListener('click', () => {
   if (sim.buy(g, id)) { save(); updateUI(); }
 });
 $('sp-close').addEventListener('click', () => selectStation(null));
+$('sp-plan').addEventListener('click', () => {
+  if (!selected || paused) return;
+  const a = Number($('sp-plan').dataset.anchor);
+  const ps = sim.planStakes(g).find((x) => x.anchor === a && (x.via || x.close) && x.line !== null);
+  if (ps) buildPlanStake(ps);
+});
+$('sp-demolish').addEventListener('click', () => {
+  if (!selected || paused) return;
+  const line = g.lines[selected.li];
+  const end = selected.i === 0 ? 'head' : 'tail';
+  const station = line.stations[selected.i];
+  askConfirm(STR.demolishEndWarnTitle, STR.demolishEndWarn(station.name, money(B.demolishCost)),
+    STR.removeYes + ' ' + station.name, () => {
+      const li = g.lines.indexOf(line);
+      if (li < 0) return;
+      const L = g.lines[li];
+      const at = end === 'head' ? 0 : L.stations.length - 1;
+      if (L.stations[at] !== station) return; // the end moved under the dialog
+      if (sim.demolish(g, li, end)) { selectStation(null); updateUI(); }
+    });
+});
 
 // --- The inspector's controls. Each re-reads the selection at click time
 // and no-ops if it is gone, the same contract the station panel's foot uses,
@@ -2292,7 +2002,7 @@ $('sp-found').addEventListener('click', () => {
 // --- The warning dialog (owner ask, 2026-08-09): destructive acts ask
 // once, and the third answer retires the asking for good. Settings brings
 // warnings back. ---
-const WARN_KEY = 'tunnelbana_warns';
+const WARN_KEY = K('warns');
 let warnsOn = store.get(WARN_KEY) !== 'off';
 let confirmAct = null;
 function askConfirm(title, text, yesLabel, act) {
@@ -2448,7 +2158,7 @@ $('sp-remove').addEventListener('click', () => {
   const line = g.lines[selected.li];
   const station = line.stations[selected.i];
   const name = station.name;
-  askConfirm(STR.removeWarnTitle, name + ' ' + STR.removeWarn + ' ' + fmt(sim.BAL.demolishCost) + ' kr.',
+  askConfirm(STR.removeWarnTitle, STR.removeWarnText(name, money(sim.BAL.demolishCost)),
     STR.removeYes + ' ' + name, () => {
       const li = g.lines.indexOf(line);
       const i = li >= 0 ? g.lines[li].stations.indexOf(station) : -1;
@@ -2527,9 +2237,9 @@ function updateLineRows() {
     const canSend = g.money >= fee && sim.spareTrains(g, li) >= 1;
     // Disabled is information: the tooltip names the shortfall (pass 02, §03).
     const reqWhy = !spareElsewhere ? STR.noSpareElsewhere
-      : g.money < fee ? STR.feeShort : STR.reqTrain + ' · ' + fee + ' kr';
+      : g.money < fee ? STR.feeShort : STR.reqTrain + ' · ' + money(fee);
     const sendWhy = sim.spareTrains(g, li) < 1 ? STR.noSpareHere
-      : g.money < fee ? STR.feeShort : STR.sendTrain + ' · ' + fee + ' kr';
+      : g.money < fee ? STR.feeShort : STR.sendTrain + ' · ' + money(fee);
     const qChip = (q.in || q.out)
       ? ' <button class="tb-linkbtn" data-cancel="' + li + '" title="' + STR.queuedCancel + '"' +
         ' style="color: var(--tb-amber)">' + (q.in ? '+' + q.in : '') + (q.out ? '−' + q.out : '') + '…</button>'
@@ -2544,14 +2254,16 @@ function updateLineRows() {
     rows.push(
       '<div class="tb-linerow">' +
       '<span class="tb-chip" style="background:' + g.lines[li].color + '"></span>' +
-      '<button class="tb-linkbtn tb-linerow__name" data-focus="' + li + '">' + esc(g.lines[li].name) + '</button>' +
+      '<button class="tb-linkbtn tb-linerow__name" data-focus="' + li + '">' + esc(g.lines[li].name) +
+      // A ring says so (spec 01 §4 proposal 7).
+      (g.lines[li].loop ? ' <span class="tb-panel__tag">' + STR.loopBadge + '</span>' : '') + '</button>' +
       '<button class="tb-linkbtn tb-linkbtn--edit" data-rename="' + li + '" title="' + STR.renameLine + '" aria-label="' + STR.renameLine + '">✎</button>' +
       // The rail is 300px wide and the row may never wrap, so it carries the
       // two numbers that answer the question the stepper asks: how often a
       // train comes, and how many are running. The stop count moves to the
       // tooltip rather than pushing the control out of reach.
       '<span class="tb-linerow__v" title="' + STR.lineHeadway + ' · ' + g.lines[li].stations.length + ' ' + STR.stops + '" aria-label="' + STR.lineHeadway + '">' +
-      (active ? Math.round(sim.lineHeadwayS(g, li)) + ' s' : '—') + '</span>' +
+      (active ? STR.stopsHeadway(Math.round(sim.lineHeadwayS(g, li))) : '—') + '</span>' +
       '<span class="tb-linerow__now" title="' + STR.lineActive + '" aria-label="' + STR.lineActive + '">' + active + ' 🚆' + qChip + '</span>' +
       (g.lines.length > 1
         ? '<span class="tb-target' + (tgt === null ? '' : ' tb-target--set') + '" title="' + tWhy + '">' +
@@ -2576,7 +2288,7 @@ function updateLineRows() {
       rows.push(
         '<div class="tb-row"><span>' + STR.upgRow[kind] + ' +1 × ' + b.n + '</span>' +
         '<button class="tb-btn tb-btn--inline" data-bulk="' + kind + '" title="' + STR.upgWhat[kind] + '"' +
-        (g.money >= b.kr ? '' : ' disabled') + '>' + kr(b.kr) + ' kr</button></div>'
+        (g.money >= b.kr ? '' : ' disabled') + '>' + money(b.kr) + '</button></div>'
       );
     }
   }
@@ -2606,13 +2318,13 @@ $('dia-toggle').addEventListener('click', () => setDiaMode(!diaOn));
 // --- The mixer (0.11): master, music, effects, persisted; the old on/off
 // toggle migrates to master zero. Unlock on any pointer per the browser's
 // gesture rule. ---
-const VOL_KEY = 'tunnelbana_vol';
+const VOL_KEY = K('vol');
 let vols = { master: 0.8, music: 0.5, effects: 0.8 };
 try {
   const savedVols = JSON.parse(store.get(VOL_KEY));
   if (savedVols && typeof savedVols === 'object') vols = { ...vols, ...savedVols };
 } catch {}
-if (store.get('tunnelbana_sound') === 'off' && store.get(VOL_KEY) === null) vols.master = 0;
+if (store.get(K('sound')) === 'off' && store.get(VOL_KEY) === null) vols.master = 0;
 sfx.setVolumes(vols);
 // Persistent storage, requested once behind the same first gesture: on
 // Chromium and Firefox this exempts the save from eviction. Safari neither
@@ -2640,10 +2352,10 @@ for (const [id, key] of [['vol-master', 'master'], ['vol-music', 'music'], ['vol
 // journey the sim is actually carrying, every couple of minutes. Ambience,
 // not information: one at a time, click to dismiss, off in Settings. Facts
 // advance through the list across sessions so nobody rereads note 1. ---
-const NOTES_KEY = 'tunnelbana_notes';
-const FACT_KEY = 'tunnelbana_factidx';
-const NOTE_HISTORY_KEY = 'tunnelbana_note_history';
-const MILESTONE_HISTORY_KEY = 'tunnelbana_milestone_history';
+const NOTES_KEY = K('notes');
+const FACT_KEY = K('factidx');
+const NOTE_HISTORY_KEY = K('note_history');
+const MILESTONE_HISTORY_KEY = K('milestone_history');
 const NOTE_EVERY = 120;   // game-seconds between notes
 let notesOn = store.get(NOTES_KEY) !== 'off';
 let factIdx = Number(store.get(FACT_KEY)) || 0;
@@ -2682,16 +2394,14 @@ function renderRecord() {
   const notes = recordKind === 'notes';
   const list = notes ? noteHistory : milestoneHistory;
   const catalog = [
-    ...FACTS.map((text, i) => ({ id: 'fact:' + i, title: STR.noteCity, text, label: 'City note ' + String(i + 1).padStart(2, '0') })),
-    ...EGGS.map((egg, i) => ({ id: 'egg:' + egg.id, title: egg.name, text: egg.fact, label: 'Odd corner ' + String(i + 1).padStart(2, '0'), eggId: egg.id })),
+    ...FACTS.map((text, i) => ({ id: 'fact:' + i, title: STR.noteCity, text, label: STR.record.noteLabel(String(i + 1).padStart(2, '0')) })),
+    ...EGGS.map((egg, i) => ({ id: 'egg:' + egg.id, title: egg.name, text: egg.fact, label: STR.record.eggLabel(String(i + 1).padStart(2, '0')), eggId: egg.id })),
   ];
   const known = (entry) => list.some((item) => item.id === entry.id ||
     (item.title === entry.title && item.text === entry.text)) || !!(entry.eggId && g.eggs[entry.eggId]);
   const found = catalog.filter(known).length;
-  $('record-title').textContent = notes ? 'CITY NOTES · ' + found + ' / ' + catalog.length : 'MILESTONES';
-  $('record-sub').textContent = notes
-    ? 'City facts and odd corners reveal themselves here when found. Journey postcards are kept below.'
-    : 'Select an era to read its newspaper again. Kept on this device.';
+  $('record-title').textContent = notes ? STR.record.notesTitle(found, catalog.length) : STR.record.milestones;
+  $('record-sub').textContent = notes ? STR.record.notesSub : STR.record.milestonesSub;
   const host = $('record-list');
   host.replaceChildren();
   if (notes) {
@@ -2700,16 +2410,16 @@ function renderRecord() {
       const row = document.createElement('div');
       row.className = 'tb-record' + (seen ? '' : ' tb-record--locked');
       const title = document.createElement('b');
-      title.textContent = seen ? entry.title : entry.label + ' · undiscovered';
+      title.textContent = seen ? entry.title : entry.label + STR.record.undiscovered;
       const text = document.createElement('p');
-      text.textContent = seen ? entry.text : 'Keep building and looking around Stockholm.';
+      text.textContent = seen ? entry.text : STR.record.keepLooking;
       row.append(title, text);
       host.append(row);
     }
     const journeys = list.filter((item) => !item.id);
     if (journeys.length) {
       const heading = document.createElement('h3');
-      heading.textContent = 'Journeys';
+      heading.textContent = STR.record.journeys;
       host.append(heading);
       for (const item of [...journeys].reverse()) appendRecord(host, item);
     }
@@ -2717,7 +2427,7 @@ function renderRecord() {
   }
   if (!list.length) {
     const empty = document.createElement('p');
-    empty.textContent = notes ? 'New city notes will be kept here.' : 'New milestones will be kept here.';
+    empty.textContent = notes ? STR.record.emptyNotes : STR.record.emptyMilestones;
     host.append(empty);
     return;
   }
@@ -2726,7 +2436,7 @@ function renderRecord() {
 function appendRecord(host, item) {
   // Older local records predate the explicit paper key. Their title is enough
   // to restore the link without changing or re-saving the player’s history.
-  const oldYear = /^Era (1952|1957|1964|1975|2000)$/.exec(item.title);
+  const oldYear = /^Era (\d{4})$/.exec(item.title);
   const momentKey = item.momentKey || (oldYear ? oldYear[1] : null);
   const row = document.createElement(momentKey ? 'button' : 'div');
   if (momentKey) {
@@ -2802,7 +2512,7 @@ function maybeNote() {
   if (noteKind) {
     noteN = (noteN + 13) % 9973;
     const pc = sim.postcard(g, noteN);
-    if (pc) showNote('commuter', NAMES[noteN % NAMES.length], pc.from + ' → ' + pc.to + ' · ' + pc.km + ' km');
+    if (pc) showNote('commuter', NAMES[noteN % NAMES.length], STR.postcardText(pc.from, pc.to, pc.km));
   } else {
     const i = factIdx % FACTS.length;
     showNote('fact', STR.noteCity, FACTS[i], 'fact:' + i);
@@ -2816,9 +2526,9 @@ function maybeNote() {
 // a new player through the loop (dispatch, extend, fleet, drivers), then
 // becomes the era objective with live numbers. Dismissable, and the dismissal
 // is remembered: it is a tutorial, not a nag. ---
-const AIM_KEY = 'tunnelbana_aims';
+const AIM_KEY = K('aims');
 let aimsHidden = store.get(AIM_KEY) === 'hidden';
-const CHARTER_COACH_KEY = 'tunnelbana_charter_coached';
+const CHARTER_COACH_KEY = K('charter_coached');
 let charterCoached = new Set();
 try {
   const savedCoach = JSON.parse(store.get(CHARTER_COACH_KEY) || '[]');
@@ -2841,8 +2551,7 @@ function showCharterCoach(li) {
   const L = g.lines[li];
   if (!L || charterCoached.has(L.name0)) return;
   charterCoachLine = li;
-  $('charter-coach-text').textContent = L.name + ' now has its first train. Extend its glowing ' +
-    'coloured end to the staked station to begin serving this new part of the city.';
+  $('charter-coach-text').textContent = STR.charterCoachText(L.name);
   $('charter-coach').hidden = false;
 }
 $('charter-coach-close').addEventListener('click', finishCharterCoach);
@@ -2868,17 +2577,16 @@ function aimText() {
     // aim must name the ACTION, not the geography (live report 2026-08-09:
     // "wants me to build the redline without telling me where the nodes
     // are" — the nodes did not exist yet; the shop card did).
-    const proj = PROJECT_OF_CORRIDOR[b.id];
-    if (proj && !g.owned[proj]) {
-      return STR.aims.charter + ' ' + STR.shop[proj].name + ' · ' + STR.aims.charterWhere +
-        ' · ' + b.name + ' ' + b.built + '/' + b.total;
-    }
+    const proj = projectOf(b.id);
+    if (proj && !g.owned[proj]) return STR.aimT.charter(STR.shop[proj].name, b.name, b.built, b.total);
     const c = CORRIDORS.find((x) => x.id === b.id);
-    const k = c ? sim.nextStakeOf(g, c) : null;
-    if (k !== null) {
-      return (b.repair ? STR.aims.repair : STR.aims.plan) + ' ' + ANCHORS[k].name +
-        ' · ' + b.name + ' ' + b.built + '/' + b.total +
-        (b.repair ? ' · ' + STR.planRepair : '');
+    const st = c ? sim.planStakes(g).find((x) => x.corridor.id === c.id) : null;
+    if (st) {
+      const name = ANCHORS[st.anchor].name;
+      const line = st.line !== null && g.lines[st.line] ? g.lines[st.line].name : c.line || '';
+      if (st.close) return STR.aimT.closeLoop(line, name, b.name, b.built, b.total);
+      if (st.via) return STR.aimT.via(line, name, b.name, b.built, b.total);
+      return STR.aimT.plan(b.repair ? STR.aims.repair : STR.aims.plan, name, b.name, b.built, b.total, b.repair);
     }
   }
   if (sim.stationCount(g) < 6) return STR.aims.extend;
@@ -2889,11 +2597,10 @@ function aimText() {
     const needP = Math.max(0, next.pk - g.pk);
     const bits = [];
     if (needR > 0) bits.push(fmt(needR) + ' ' + STR.riders);
-    if (needP > 0.05) bits.push(needP.toFixed(1) + ' ' + STR.trust);
+    if (needP > 0.05) bits.push(STR.trust + ' ' + needP.toFixed(1));
     // Name the binding constraint, so "wait" always comes with a lever.
     const lever = needR > 0 ? STR.aims.riders : STR.aims.trust;
-    return STR.aims.toward + ' ' + next.year + ': ' + bits.join(' · ') + ' ' + STR.aims.toGo +
-      ' — ' + lever + '.';
+    return STR.aimT.toward(next.year, bits, lever);
   }
   if (!g.endingSeen) return STR.aims.finale;
   return null;
@@ -2913,10 +2620,14 @@ function updateAim() {
 // --- Achievements: aims, stated plainly, with the bonus they carry ---
 let achToastAt = 0;
 let achievementFocusId = null;
+// An aim's words: the language's own for the common set, the pack's own
+// for its history (written in its language already).
+const achWords = (a) => ({ name: a.name, hint: a.hint, ...(STR.ach[a.id] || {}) });
+
 function showAchievement(a, bonus) {
   sfx.achievement();
   $('ach-toast-label').textContent = STR.achEarned;
-  $('ach-toast-name').textContent = a.name;
+  $('ach-toast-name').textContent = achWords(a).name;
   // What the aim just granted rides the toast (owner ask 2026-08-10, the
   // fleet slots especially should be exciting to see land).
   $('ach-toast-more').textContent = bonus ? bonus + ' · ' + STR.achToastMore : STR.achToastMore;
@@ -2950,13 +2661,13 @@ function bonusText(a, granted) {
   }
   if (a.add) for (const k of Object.keys(a.add)) {
     // fleetMax is a count, not a percentage: it is a train slot.
-    if (k === 'fleetMax') bits.push('+' + a.add[k] + (a.add[k] > 1 ? ' train slots' : ' train slot'));
+    if (k === 'fleetMax') bits.push(STR.bonus.slot(a.add[k]));
     else bits.push('+' + Math.round(a.add[k] * 100) + '% ' + (STR.bonusName[k] || k));
   }
-  const kr = granted ? granted.kr : a.reward?.kr;
+  const krG = granted ? granted.kr : a.reward?.kr;
   const trust = granted ? granted.trust : a.reward?.pk;
-  if (kr) bits.push('+' + fmt(kr) + ' kr');
-  if (trust) bits.push('+' + trust + ' trust');
+  if (krG) bits.push(STR.bonus.money(money(krG)));
+  if (trust) bits.push(STR.bonus.trust(trust));
   return bits.join(' · ');
 }
 
@@ -2979,9 +2690,11 @@ function achCard(a, meta, dots, ids, focused) {
   const has = !!g.achieved[a.id];
   const hidden = meta.hidden && !has;
   const state = has ? 'earned' : hidden ? 'hidden' : 'locked';
-  const name = hidden ? '???' : a.name;
+  const W = achWords(a);
+  const name = hidden ? '???' : W.name;
   const bonus = hidden ? '' : bonusText(a);
-  const hint = (hidden ? (meta.tease || '…') : a.hint) + (bonus ? ' · ' + bonus : '');
+  const tease = (STR.achTease && STR.achTease[a.id]) || meta.tease || '…';
+  const hint = (hidden ? tease : W.hint) + (bonus ? ' · ' + bonus : '');
   const tierRow = dots
     ? '<span class="tb-ach__tier">' + dots.map((on) => '<i' + (on ? ' class="on"' : '') + '></i>').join('') + '</span>'
     : '';
@@ -2993,7 +2706,7 @@ function achCard(a, meta, dots, ids, focused) {
 
 function renderAchievements() {
   const got = sim.ACHIEVEMENTS.filter((a) => g.achieved[a.id]).length;
-  $('ach-count').textContent = got + ' of ' + sim.ACHIEVEMENTS.length + ' earned';
+  $('ach-count').textContent = STR.achCount(got, sim.ACHIEVEMENTS.length);
   const byCat = new Map(sim.ACH_CATS.map((c) => [c.key, []]));
   for (const a of sim.ACHIEVEMENTS) {
     const meta = sim.ACH_META[a.id] || { cat: 'building' };
@@ -3031,7 +2744,7 @@ function renderAchievements() {
     return '<div class="tb-ach-cat">' +
       '<div class="tb-ach-cat__head">' +
       '<span class="tb-ach-cat__glyph"><svg viewBox="0 0 24 24" width="18" height="18">' + (ACH_GLYPHS[c.key] || '') + '</svg></span>' +
-      '<span class="tb-ach-cat__name">' + c.name + '</span>' +
+      '<span class="tb-ach-cat__name">' + (STR.achCats[c.key] || c.name) + '</span>' +
       '<span class="tb-ach-cat__bar"><i style="width:' + pct + '%"></i></span>' +
       '<span class="tb-ach-cat__count">' + earnedN + '/' + items.length + '</span>' +
       '</div><div class="tb-ach-grid">' + cards + '</div></div>';
@@ -3079,7 +2792,7 @@ function renderStats() {
     const active = g.trains.filter((t) => t.line === li && !t.mothballed).length;
     return '<tr><td><span class="tb-linedot" style="background:' + L.color + '"></span>' + esc(L.name) + '</td>' +
       '<td>' + fmt(L.delivered) + '</td>' +
-      '<td>' + fmt(L.earned) + ' kr</td>' +
+      '<td>' + money(L.earned) + '</td>' +
       '<td class="dim">' + active + '</td></tr>';
   }).join('');
   // The record book: the pass-03 record rows.
@@ -3090,7 +2803,7 @@ function renderStats() {
     '<span class="tb-record__v">' + v + '</span></div>';
   $('stats-records').innerHTML =
     rec(STR.statBestMin, fmt(g.records.riders) + STR.perMin) +
-    rec(STR.statBestGross, fmt(g.records.gross) + ' kr/s') +
+    rec(STR.statBestGross, rate(g.records.gross)) +
     rec(STR.statRush, rushTxt || '—') +
     rec(STR.statMoves, fmt(g.trainMoves || 0)) +
     rec(STR.statFixed, fmt(g.incidentsFixed || 0));
@@ -3101,36 +2814,36 @@ function renderStats() {
 // level pips or the reason it cannot be bought. The icon and the category come
 // from this table: the sim's catalog is economics and should not carry art.
 const SHOP_META = {
-  train:       { icon: 'train', cat: 'Fleet' },
-  drivers:     { icon: 'staff', cat: 'Staff' },
-  timetable:   { icon: 'time',  cat: 'Timetable' },
-  capacity:    { icon: 'cap',   cat: 'Capacity' },
-  bogies:      { icon: 'speed', cat: 'Stock' },
-  turnstiles:  { icon: 'fare',  cat: 'Fare' },
-  stats:       { icon: 'stats', cat: 'Office' },
-  works:       { icon: 'cap',   cat: 'Office' },
-  patterns:    { icon: 'time',  cat: 'Service' },
-  region:      { icon: 'net',   cat: 'Project' },
-  escalators:  { icon: 'cap',   cat: 'Capacity' },
-  hosts:       { icon: 'staff', cat: 'Comfort' },
-  adverts:     { icon: 'art',   cat: 'Comfort' },
-  westline:    { icon: 'net',   cat: 'Project' },
-  redline:     { icon: 'net',   cat: 'Project' },
-  blueline:    { icon: 'net',   cat: 'Project' },
-  entrances:   { icon: 'cap',   cat: 'Catchment' },
-  through:     { icon: 'thru',  cat: 'Project' },
-  stock1957:   { icon: 'speed', cat: 'Stock' },
-  atc:         { icon: 'sig',   cat: 'Signalling' },
-  c4stock:     { icon: 'speed', cat: 'Stock' },
-  c14stock:    { icon: 'speed', cat: 'Stock' },
-  zonefare:    { icon: 'fare',  cat: 'Fare' },
-  artstation:  { icon: 'art',   cat: 'Comfort' },
-  cbtc:        { icon: 'sig',   cat: 'Signalling' },
-  nightservice:{ icon: 'night', cat: 'Service' },
-  platforms:   { icon: 'cap',   cat: 'Capacity' },
-  depot:       { icon: 'train', cat: 'Fleet' },
-  driftcentral: { icon: 'train', cat: 'Fleet' },
+  train:       { icon: 'train', cat: 'fleet' },
+  drivers:     { icon: 'staff', cat: 'staff' },
+  timetable:   { icon: 'time',  cat: 'timetable' },
+  capacity:    { icon: 'cap',   cat: 'capacity' },
+  bogies:      { icon: 'speed', cat: 'stock' },
+  turnstiles:  { icon: 'fare',  cat: 'fare' },
+  stats:       { icon: 'stats', cat: 'office' },
+  works:       { icon: 'cap',   cat: 'office' },
+  patterns:    { icon: 'time',  cat: 'service' },
+  region:      { icon: 'net',   cat: 'project' },
+  escalators:  { icon: 'cap',   cat: 'capacity' },
+  hosts:       { icon: 'staff', cat: 'comfort' },
+  adverts:     { icon: 'art',   cat: 'comfort' },
+  entrances:   { icon: 'cap',   cat: 'catchment' },
+  through:     { icon: 'thru',  cat: 'project' },
+  stock1957:   { icon: 'speed', cat: 'stock' },
+  atc:         { icon: 'sig',   cat: 'signalling' },
+  c4stock:     { icon: 'speed', cat: 'stock' },
+  c14stock:    { icon: 'speed', cat: 'stock' },
+  zonefare:    { icon: 'fare',  cat: 'fare' },
+  artstation:  { icon: 'art',   cat: 'comfort' },
+  cbtc:        { icon: 'sig',   cat: 'signalling' },
+  nightservice:{ icon: 'night', cat: 'service' },
+  platforms:   { icon: 'cap',   cat: 'capacity' },
+  depot:       { icon: 'train', cat: 'fleet' },
+  driftcentral: { icon: 'train', cat: 'fleet' },
+  stockE:      { icon: 'speed', cat: 'stock' },
 };
+// The pack's charters are all projects.
+for (const p of CITY.projects || []) SHOP_META[p.id] = { icon: 'net', cat: 'project' };
 
 const ICONS = {};
 {
@@ -3143,20 +2856,7 @@ const ICONS = {};
 // grid of line drawings has to buy one to learn what it was. Built from the
 // same ICONS table the shop uses, and asserted against it below, so a tenth
 // icon cannot ship without a meaning written next to it.
-const ICON_KEY = {
-  train: ['Fleet', 'Rolling stock: another train, or more room inside one'],
-  staff: ['Staff', 'Drivers. Hired per train, and they dispatch it for you'],
-  time:  ['Timetable', 'Regular departures. Trains stop bunching into convoys'],
-  cap:   ['Capacity', 'How many people fit: in a train, or through a station'],
-  speed: ['Stock', 'Faster or quicker-accelerating trains, so a round trip is shorter'],
-  fare:  ['Fare', 'What each rider pays you'],
-  net:   ['Project', 'A new line, chartered outright'],
-  thru:  ['Through-running', 'One line worked end to end instead of as two halves'],
-  sig:   ['Signalling', 'Trains may follow each other more closely'],
-  stats: ['Statistics', 'Graphs and records: the network, measured'],
-  art:   ['Comfort', 'A station people are glad to be in, which brings more of them'],
-  night: ['Service', 'The network runs when the city sleeps'],
-};
+const ICON_KEY = STR.iconKey;
 function renderIconKey() {
   const host = $('icon-key');
   if (!host || host.childElementCount) return;   // built once
@@ -3183,7 +2883,7 @@ function renderIconKey() {
 // Session state, not saved: it is a mode you hold, not a preference.
 let buyQty = 1;   // 1 | 10 | Infinity (MAX)
 
-function qtyLabel(n) { return n === Infinity ? 'MAX' : '×' + n; }
+function qtyLabel(n) { return n === Infinity ? STR.qtyMax : '×' + n; }
 
 function renderQty() {
   const row = $('qty-row');
@@ -3206,16 +2906,18 @@ $('qty-row').addEventListener('click', (e) => {
 // disabled-is-designed rule, extended to the future).
 function unlockText(item) {
   const u = item.unlock || {};
-  if (u.stations) return STR.unlockAt + ' ' + u.stations + ' ' + STR.unlockStations;
-  if (u.delivered) return STR.unlockAt + ' ' + fmt(u.delivered) + ' ' + STR.riders;
-  if (u.coverage) return STR.unlockAt + ' ' + Math.round(u.coverage * 100) + '% ' + STR.coverage;
+  const U = STR.unlockFmt;
+  if (u.stations) return U.stations(u.stations);
+  if (u.delivered) return U.delivered(fmt(u.delivered));
+  if (u.coverage) return U.coverage(Math.round(u.coverage * 100));
   if (u.corridor) {
     const c = CORRIDORS.find((x) => x.id === u.corridor);
-    return STR.unlockWhen + ' ' + (c ? c.name : u.corridor) + ' ' + STR.unlockDelivered;
+    return U.corridor(c ? c.name : u.corridor);
   }
-  if (u.retail) return STR.unlockAt + ' ' + u.retail + ' ' + STR.unlockRetail;
-  if (u.hubs) return STR.unlockAt + ' ' + u.hubs + ' ' + STR.unlockHubs;
-  return STR.unlocksIn + ' ' + item.era;
+  if (u.retail) return U.retail(rate(u.retail));
+  if (u.hubs) return U.hubs(u.hubs);
+  if (u.anchorId) return U.anchor(ANCHORS[sim.anchorIndex(u.anchorId)].name);
+  return U.era(sim.ERAS[item.era].year);
 }
 
 const shopEl = $('shop');
@@ -3231,7 +2933,7 @@ const catHeader = {};
 for (const c of catOrder) {
   const h = document.createElement('div');
   h.className = 'tb-shopcat';
-  h.textContent = c;
+  h.textContent = STR.shopCat[c] || c;
   shopEl.appendChild(h);
   catHeader[c] = h;
   buildCardsFor(c);
@@ -3255,7 +2957,7 @@ function buildCardsFor(cat) {
   if (icon) card.querySelector('.tb-shop__icon').appendChild(icon.cloneNode(true));
   card.querySelector('.tb-shop__name').textContent = s.name;
   card.querySelector('.tb-shop__desc').textContent = s.desc;
-  card.querySelector('[data-slot=cat]').textContent = meta.cat;
+  card.querySelector('[data-slot=cat]').textContent = STR.shopCat[meta.cat] || meta.cat;
   card.addEventListener('click', () => {
     if (paused) return;
     // One transaction, however many levels: the closed forms make MAX cheap.
@@ -3282,7 +2984,7 @@ function updateShop() {
   // trust can pay it (same grammar as the second-train beat).
   const charterNeeded = new Set();
   for (const b of sim.planBlockers(g)) {
-    const p = PROJECT_OF_CORRIDOR[b.id];
+    const p = projectOf(b.id);
     if (p && !g.owned[p]) charterNeeded.add(p);
   }
   for (const item of sim.CATALOG) {
@@ -3296,7 +2998,7 @@ function updateShop() {
     // carry their year, and an era-open item still behind its unlock carries
     // the CONDITION in the player's own numbers (0.11 grammar). All five
     // eras at once would be a wall of text, not an invitation.
-    const soonEra = !eraOpen && nextEra && item.era === nextEra.year;
+    const soonEra = !eraOpen && nextEra && item.era === g.era + 1;
     const soonUnlock = eraOpen && !open;
     const soon = soonEra || soonUnlock;
     // A maxed upgrade still leaves the shop (owner ask): the space belongs to
@@ -3316,7 +3018,8 @@ function updateShop() {
     const nLevels = item.max === 1 ? 1 : wantN;
     const cost = nLevels > 1 ? sim.bulkCost(g, item.id, nLevels) : sim.shopCost(g, item.id);
     const isPk = item.currency === 'pk';
-    const unit = isPk ? ' ' + STR.trust : ' kr';
+    const unit = isPk ? ' ' + STR.trust : '';
+    const price = (n) => (isPk ? fmt(n) + unit : money(n));
     const have = isPk ? g.pk : g.money;
     const short = Math.max(0, cost - have);
     const affordable = open && !gated && !maxed && sim.canBuy(g, item.id) &&
@@ -3338,15 +3041,14 @@ function updateShop() {
       // The upkeep quote is LIVE (the flat rate lied once the fleet-scaled
       // curve landed): what this specific next train adds to the bill.
       card.querySelector('.tb-shop__desc').textContent =
-        STR.shop.train.desc + ' ' + STR.upkeepGrows + ' ' +
-        (Math.round(sim.nextTrainUpkeep(g) * 10) / 10) + ' kr/s.';
+        STR.shop.train.desc + STR.upkeepQuote(rate(Math.round(sim.nextTrainUpkeep(g) * 10) / 10));
     }
     if (item.kind === 'project') {
       card.classList.toggle('tb-goldcue', charterNeeded.has(item.id) && affordable);
     }
 
     card.querySelector('.tb-shop__cost').textContent =
-      maxed ? STR.max : (nLevels > 1 ? '×' + nLevels + '  ' : '') + kr(cost) + unit;
+      maxed ? STR.max : (nLevels > 1 ? '×' + nLevels + '  ' : '') + price(cost);
 
     // The foot's left slot: the reason it cannot be bought, or the level owned.
     // Disabled must stay legible and name the shortfall, never fade out.
@@ -3357,14 +3059,14 @@ function updateShop() {
       left.className = 'tb-shop__gate';
       left.textContent = soonUnlock
         ? unlockText(item)
-        : STR.unlocksIn + ' ' + item.era + (item.needs ? ' · ' + STR.needsDrivers.toLowerCase() : '');
+        : STR.unlockFmt.era(sim.ERAS[item.era].year) + (item.needs ? ' · ' + STR.needsDrivers.toLowerCase() : '');
     } else if (gated) {
       left.className = 'tb-shop__gate';
       left.textContent = STR.needsDrivers;
     } else if (short > 0) {
       left.className = 'tb-shop__short';
-      left.textContent = STR.need + ' ' + kr(short) + unit + ' ' + STR.more;
-    } else if (item.id === 'train' && maxed && g.era < 5) {
+      left.textContent = STR.need + ' ' + price(short) + ' ' + STR.more;
+    } else if (item.id === 'train' && maxed && g.era < sim.ERAS.length - 1) {
       // The cap GROWS (live feedback read it as fixed): a maxed fleet names
       // the next era's headroom instead of just reading Max.
       left.className = 'tb-shop__gate';
@@ -3386,8 +3088,8 @@ function updateShop() {
     const meta = SHOP_META[item.id] || { cat: '' };
     const max = sim.maxFor(g, item);
     catEl.textContent = item.id === 'train'
-      ? (owned + 1) + ' / ' + (max + 1) + ' ' + STR.ownedLower + ' · ' + meta.cat
-      : owned + ' / ' + max + ' · ' + meta.cat;
+      ? (owned + 1) + ' / ' + (max + 1) + ' ' + STR.ownedLower + ' · ' + (STR.shopCat[meta.cat] || meta.cat)
+      : owned + ' / ' + max + ' · ' + (STR.shopCat[meta.cat] || meta.cat);
   }
   // Category headers follow their groups: no header stands over nothing.
   for (const c of catOrder) {
@@ -3406,7 +3108,7 @@ function updateShop() {
     // The button spends its right edge on the cost, like every other gated
     // control in the system (section 03).
     $('era-btn').innerHTML = STR.advance + ' ' + next.year +
-      '<span class="tb-btn__why" style="color: var(--tb-politic)">' + next.pk + ' ' + STR.trust + '</span>';
+      '<span class="tb-btn__why" style="color: var(--tb-politic)">' + STR.trust + ' ' + next.pk + '</span>';
     $('era-btn').disabled = !sim.canAdvanceEra(g);
     const needPk = Math.max(0, next.pk - g.pk);
     const rate = sim.pkRate(g);
@@ -3417,9 +3119,9 @@ function updateShop() {
     const planTxt = plan.map((b) =>
       b.name + ' ' + b.built + '/' + b.total + (b.repair ? ' · ' + STR.planRepair : '')).join(' · ');
     $('era-needs').textContent = STR.advanceNeeds + ' ' + fmt(next.delivered) + ' ' + STR.riders +
-      ' · ' + next.pk + ' ' + STR.trust +
+      ' · ' + STR.trust + ' ' + next.pk +
       (planTxt ? ' · ' + planTxt : '') +
-      (eta > 0 ? ' (' + STR.about + ' ' + eta + ' min at this coverage)' : '') +
+      (eta > 0 ? STR.eraEta(eta) : '') +
       ' · ' + STR.trustFrom;
   } else {
     $('era-btn').hidden = true;
@@ -3446,7 +3148,7 @@ function updateUI() {
   // The opening legend earns its space while the player learns the first
   // railway. Once 1950 is complete, the map needs that corner back.
   $('hints-panel').hidden = g.era >= 1;
-  $('money').innerHTML = numHTML(g.money, ' kr');
+  $('money').innerHTML = numHTML(g.money);
   const mMag = magOf(g.money);
   if (moneyMag >= 0 && mMag > moneyMag) popNum($('money'));
   moneyMag = Math.max(moneyMag === -1 ? mMag : moneyMag, mMag);
@@ -3456,16 +3158,17 @@ function updateUI() {
   const gross = sim.grossRate(g);
   const upkeep = sim.upkeepRate(g);
   const net = gross - upkeep;
-  $('rate-gross').textContent = '+' + Math.max(0, gross - sim.commerceRate(g)).toFixed(1) + ' kr/s fares' +
+  const hudRate = F.fmtRateShort;
+  $('rate-gross').textContent = STR.hud.fares(hudRate(Math.max(0, gross - sim.commerceRate(g)))) +
     (g.clock < g.boostUntil ? ' ×' + B.goldBoostMult : '');
-  $('rate-upkeep').textContent = '−' + upkeep.toFixed(1) + ' kr/s upkeep';
+  $('rate-upkeep').textContent = STR.hud.upkeep(hudRate(upkeep));
   const netEl = $('rate-net');
-  netEl.textContent = (net >= 0 ? '+' : '−') + Math.abs(net).toFixed(1) + ' kr/s';
+  netEl.textContent = (net >= 0 ? '+' : '−') + hudRate(Math.abs(net));
   netEl.classList.toggle('tb-rate--down', net < 0);
   netEl.classList.toggle('tb-rate--up', net >= 0);
   $('stat-delivered').textContent = fmt(g.totalDelivered);
   const rent = sim.commerceRate(g);
-  $('rate-rent').textContent = rent > 0 ? '+' + rent.toFixed(1) + ' kr/s rent' : '';
+  $('rate-rent').textContent = rent > 0 ? STR.hud.rent(hudRate(rent)) : '';
   // grossRate() already contains rent, so the fares row must exclude it or the
   // readout contradicts itself (review: rows summed to 429.8 against a net of
   // 310.8, and a third of "fares" was actually rent).
@@ -3486,8 +3189,8 @@ function updateUI() {
   const pkPerMin = sim.pkRate(g) * 60;
   const pkCap = sim.pkCap(g);
   const pkFull = g.pk >= pkCap - 1e-6;
-  $('pk').textContent = g.pk.toFixed(1) +
-    (Number.isFinite(pkCap) ? ' / ' + pkCap : '') + ' ' + STR.trust;
+  $('pk').textContent = (LOCALE === 'ja' ? STR.trust + ' ' : '') + g.pk.toFixed(1) +
+    (Number.isFinite(pkCap) ? ' / ' + pkCap : '') + (LOCALE === 'ja' ? '' : ' ' + STR.trust);
   $('pk-rate').textContent = pkFull ? STR.trustCapped
     : pkPerMin > 0 ? '+' + pkPerMin.toFixed(1) + STR.perMin : '';
   // The clock, on the pass-03 treatment: hm in ink, the phase in caps, the
@@ -3512,7 +3215,7 @@ function updateUI() {
     ? '<span class="tb-grade" data-grade="' + lastRush.grade + '">' +
       '<span class="tb-grade__mark">' + lastRush.grade + '</span>' +
       '<span class="tb-grade__label">' + fmt(lastRush.carried) + ' ' + STR.riders + '</span>' +
-      (lastRush.trust ? '<span>+' + lastRush.trust + ' ' + STR.trust + '</span>' : '') + '</span>'
+      (lastRush.trust ? '<span>' + STR.bonus.trust(lastRush.trust) + '</span>' : '') + '</span>'
     : peakNow
       ? '<span class="tb-rush"><span class="tb-rush__pulse"></span>' + STR.phases[phIdx] + '</span>'
       : '';
@@ -3549,7 +3252,7 @@ function updateUI() {
   }
   const auto = !!g.owned.drivers;
   $('bell-sub').textContent = !idleN ? STR.noIdle
-    : auto ? STR.bellAuto + ' ' + Math.round(sim.lineHeadwayS(g, 0)) + ' s'
+    : auto ? STR.bellAuto + ' ' + STR.stopsHeadway(Math.round(sim.lineHeadwayS(g, 0)))
     : STR.dispatchSub;
   bell.classList.toggle('tb-bell--auto', auto);
   bell.disabled = !idleN;
@@ -3588,7 +3291,7 @@ function frame(now) {
     if (e.type === 'demolish') render.addFloatGeo(e.geo, e.name + ' ' + STR.demolished);
     if (e.type === 'alight') render.addFloatGeo(e.geo, '↓' + fmt(e.n), 'muted');
     if (e.type === 'mothball') render.addFloatGeo(e.geo, STR.mothballedFloat, 'muted');
-    if (e.type === 'surge') render.addFloatGeo(e.geo, 'RUSH · ' + e.name);
+    if (e.type === 'surge') render.addFloatGeo(e.geo, STR.rushFloat(e.name));
     if (e.type === 'abandon') render.addFloatGeo(e.geo, '−' + fmt(e.n), 'red');
     if (e.type === 'newline') {
       render.addFloatGeo(e.geo, e.name);
@@ -3599,7 +3302,7 @@ function frame(now) {
     if (e.type === 'gold') render.addFloatGeo(e.geo, STR.goldName);
     if (e.type === 'gold-taken') {
       render.addFloatGeo(e.geo, e.kind === 'trust'
-        ? STR.goldName + ' · +' + e.amount + ' ' + STR.trust
+        ? STR.goldName + ' · ' + STR.bonus.trust(e.amount)
         : STR.goldName + ' · ' + STR.goldBoost);
     }
     if (e.type === 'pattern') render.addFloatGeo(e.geo, e.name + ' · ' + (e.on ? STR.patternOnFloat : STR.patternOffFloat), e.on ? undefined : 'muted');
@@ -3608,16 +3311,24 @@ function frame(now) {
     if (e.type === 'rush-grade') {
       lastRush = { ...e, at: performance.now() };
       render.addFloatGeo(e.geo, STR.phases[e.phase] + ' · ' + e.grade + ' · ' +
-        fmt(e.carried) + ' ' + STR.riders + (e.trust ? ' · +' + e.trust + ' ' + STR.trust : ''),
+        fmt(e.carried) + ' ' + STR.riders + (e.trust ? ' · ' + STR.bonus.trust(e.trust) : ''),
         e.grade === 'A' || e.grade === 'B' ? undefined : 'muted');
     }
     if (e.type === 'plandone') {
       render.addFloatGeo(e.geo, e.name + ' · ' + STR.planDoneFloat +
-        (e.trust ? ' · +' + e.trust + ' ' + STR.trust : ''));
-      if (e.id === 'green-south') render.addFloatGeo(e.geo, STR.freeUnlockedFloat);
+        (e.trust ? ' · ' + STR.bonus.trust(e.trust) : ''));
+      if (e.id === (CITY.rules.freeBuildCorridor || CORRIDORS[0].id)) render.addFloatGeo(e.geo, STR.freeUnlockedFloat);
     }
     if (e.type === 'junction') render.addFloatGeo(e.geo, STR.junction + ' · ' + e.name);
-    if (e.type === 'council') render.addFloatGeo(e.geo, STR.councilFloat + ' · ' + e.name);
+    if (e.type === 'council') {
+      const d = sim.COUNCIL.find((x) => x.id === e.id);
+      render.addFloatGeo(e.geo, STR.councilFloat + ' · ' + (d ? decWords(d).name : e.name));
+    }
+    if (e.type === 'loop') {
+      render.addFloatGeo(e.geo, e.name + ' · ' + STR.loopFloat);
+      sfx.achievement();
+      recordMilestone(STR.milestone.loop(e.name), STR.milestone.loopText);
+    }
     if (e.type === 'achievement') {
       const a = sim.ACHIEVEMENTS.find((x) => x.id === e.id);
       if (a) {
@@ -3625,14 +3336,19 @@ function frame(now) {
         showAchievement(a, bonusText(a, e));
       } else {
         delete $('ach-toast').dataset.achievementId;
-        showAchievement({ name: e.name || 'Achievement' }, '');
+        showAchievement({ name: e.name || STR.achFallback }, '');
       }
     }
     // 'open' fires exactly once per game (the g.opened guard), so it is the
     // honest "someone actually started playing" milestone, not a page load.
-    if (e.type === 'open') { render.addFloatGeo(e.geo, STR.ribbonCut); pulse('start'); recordMilestone('Opening day', STR.ribbonCut); }
-    if (e.type === 'era') { showMoment(e.year); pulse('era', e.year); recordMilestone('Era ' + e.year, 'The city moved into a new decade.', String(e.year)); }
-    if (e.type === 'ending') { showEnding(); pulse('ending'); recordMilestone('Hela Stockholm', 'The whole city is connected.', 'slut'); }
+    if (e.type === 'open') { render.addFloatGeo(e.geo, STR.ribbonCut); pulse('start'); recordMilestone(STR.milestone.opening, STR.ribbonCut); }
+    if (e.type === 'era') {
+      const key = e.key || String(e.year);
+      showMoment(key);
+      pulse('era', e.year);
+      recordMilestone(STR.milestone.era(e.year), STR.milestone.eraText, key);
+    }
+    if (e.type === 'ending') { showEnding(); pulse('ending'); recordMilestone(STR.milestone.ending, STR.milestone.endingText, 'slut'); }
   }
   g.events.length = 0;
   // 7 s, not the old 4.2: a toast you are meant to CLICK has to outlive the
@@ -3694,11 +3410,8 @@ function showAwayNote(off) {
   const h = Math.floor(off.seconds / 3600);
   const m = Math.floor((off.seconds % 3600) / 60);
   $('offline-note').hidden = false;
-  $('offline-note').textContent =
-    STR.awayTitle + ' (' + (h ? h + ' h ' : '') + m + ' min): +' + fmt(off.earned) +
-    ' kr · ' + fmt(off.delivered) + ' ' + STR.riders + ' · ' +
-    off.rate.toFixed(1) + ' kr/s net' +
-    (off.busiest && g.lines.length > 1 ? ' · ' + off.busiest + ' ' + STR.awayLed : '') + '.';
+  $('offline-note').textContent = STR.awayNote(STR.durHM(h, m), money(off.earned), fmt(off.delivered),
+    rate(off.rate), off.busiest && g.lines.length > 1 ? off.busiest : null);
 }
 if (offline) {
   showAwayNote(offline);
@@ -3709,7 +3422,8 @@ if (offline) {
 if (saveLocked) {
   const note = $('offline-note');
   note.hidden = false;
-  note.textContent = g.hydrateCorrupt ? STR.saveCorruptNote : STR.saveLockedNote;
+  note.textContent = g.hydrateWrongCity ? STR.wrongCityNote(g.hydrateWrongCity)
+    : g.hydrateCorrupt ? STR.saveCorruptNote : STR.saveLockedNote;
 }
 // A migrated save explains itself once, in the same place as the away summary,
 // so "my finished upgrades have room again" reads as an update rather than a

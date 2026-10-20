@@ -51,28 +51,28 @@ export const FACTS = [
 // map are great, link them to achievements too"). Each is a quiet politic
 // diamond (pass 03: rewards noticing, never reads as a task), revealed only
 // when the network reaches its neighbourhood, found by clicking, worth a
-// fact and an achievement tick. `needs` receives the set of built anchor
-// indices; the indices are ANCHORS positions in data.js, named in comments.
+// fact and an achievement tick. `needs` names the anchors (by id) that must
+// all be built before the diamond shows.
 // Silverpilen is special: it has no fixed place, it is a TRAIN, and it only
 // runs at night; the renderer owns its position.
 export const EGGS = [
   { id: 'kymlinge', name: 'Kymlinge', geo: [59.3890, 17.9580],
-    needs: (used) => used.has(55) && used.has(56),   // Hallonbergen and Kista
+    needs: ['hallonbergen', 'kista'],
     fact: 'Kymlinge: the station that was built and never opened. Its shell still stands on the line you are riding. Stockholmers say only the dead alight here.' },
   { id: 'silverpilen', name: 'Silverpilen', geo: null,   // a night train, not a place
-    needs: () => true,
+    needs: [],
     fact: 'You saw it: Silverpilen, the unpainted aluminium train that haunted the network for decades. Eight cars, no livery, never in the timetable.' },
   { id: 'thorildsplan', name: 'Thorildsplan', geo: [59.3316, 18.0135],
-    needs: (used) => used.has(17) && used.has(18),   // Fridhemsplan and Kristineberg
+    needs: ['fridhemsplan', 'kristineberg'],
     fact: 'Thorildsplan is missing from this map, but the real station is there between your two stops, decorated corner to corner in pixel art.' },
   { id: 'norrstrom', name: 'Under Norrström', geo: [59.3270, 18.0645],
-    needs: (used) => used.has(0) && used.has(1),     // T-Centralen and Gamla stan
+    needs: ['t-centralen', 'gamla-stan'],
     fact: 'Beneath this water runs the tunnel that joined the two halves of the green line in 1957 and turned Stockholm’s lines into a system.' },
   { id: 'skogskyrkogarden', name: 'Skogskyrkogården', geo: [59.2760, 18.1010],
-    needs: (used) => used.has(9),                    // Skogskyrkogården station
+    needs: ['skogskyrkogarden'],
     fact: 'East of the platform lies the woodland cemetery, a UNESCO World Heritage site. Greta Garbo rests there, a short walk from your station.' },
   { id: 'ostermalmstorg', name: 'Östermalmstorg', geo: [59.3355, 18.0740],
-    needs: (used) => used.has(38),                   // Östermalmstorg station
+    needs: ['ostermalmstorg'],
     fact: 'This station was engineered to double as a civil defence shelter, deep and blast-doored. The calm platform was designed for a very different day.' },
 ];
 

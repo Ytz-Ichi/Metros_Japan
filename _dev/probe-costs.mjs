@@ -18,7 +18,7 @@
 //                                         # the structure with prices removed,
 //                                         # income comparisons meaningless
 import * as sim from '../src/sim.js';
-import { ANCHORS, CORRIDORS } from '../src/data.js';
+const { ANCHORS, CORRIDORS } = sim;
 import { wouldBuyTrain } from './probe-policy.mjs';
 
 const HORIZON = Number(process.argv[2]) || 7200;
@@ -49,7 +49,7 @@ function fmt(n) { return Math.round(n).toLocaleString('en-US'); }
 function nextExtension() {
   const used = sim.usedAnchorsAll(g);
   for (const c of CORRIDORS) {
-    for (let k = c.start; k < c.end; k++) {
+    for (const k of c.anchors) {
       if (used.has(k) || !sim.anchorRevealed(g, k)) continue;
       let best = null;
       for (let li = 0; li < g.lines.length; li++) {

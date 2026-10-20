@@ -15,7 +15,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+const CHROME = process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const DBG_PORT = 9227;
 const HTTP_PORT = 8129;
 const THEME = process.argv[2] === 'light' ? 'light' : 'dark';
@@ -58,7 +58,7 @@ async function shot(ws, name) {
 const BUILD_POSE = `(async () => {
   const t = window.__tb;
   if (!t) return 'no debug handle';
-  const { ANCHORS, CORRIDORS } = await import('./src/data.js');
+  const { ANCHORS, CORRIDORS } = await import('./src/sim.js');
   const { sim, g } = t;
   t.closeMenu();
   g.money = 1e9;
@@ -89,7 +89,7 @@ const BUILD_POSE = `(async () => {
     const li = g.lines.length > before ? g.lines.length - 1 : before - 1;
     for (const [cid, end] of corridors) {
       const c = CORRIDORS.find((x) => x.id === cid);
-      for (let k = c.start; k < c.end; k++) {
+      for (const k of c.anchors) {
         g.money = 1e9;
         sim.extendTo(g, li, end, ANCHORS[k].geo, k);
       }

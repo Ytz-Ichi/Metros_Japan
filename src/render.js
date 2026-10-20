@@ -3,13 +3,28 @@
 // layer), every number and panel lives in the DOM (plan §7). All positions are
 // projected per frame through the active projector.
 
-import { ANCHORS, CORRIDORS, LINE, WATER } from './data.js';
-import { EGGS } from './facts.js';
 import {
+  CITY, ANCHORS, CORRIDORS, BUILD_CENTER,
   stationCap, usedAnchorsOnLine, usedAnchorsAll, linesAtAnchor,
-  endStation, waitingAt, trainPos, anchorRevealed, teaseVisible, corridorOf, dayPhase,
-  buildRadiusNow, stakeLine, growthView,
+  endStation, waitingAt, trainPos, anchorRevealed, teaseVisible, dayPhase,
+  buildRadiusNow, growthView, planStakes, canCloseLoopAt, lineStripe,
 } from './sim.js';
+
+const WATER = CITY.water || [];
+const EGGS = CITY.eggs || [];
+
+// The few words the canvas paints itself (spec 01 §3.8): main.js hands them
+// over from the string table, so the map speaks the page's language.
+let S = {
+  buildHere: 'Build here',
+  dragThisEnd: 'Drag this end to the pulsing ring',
+  rushHour: 'RUSH HOUR',
+  incident: 'SIGNALFEL',
+  closeLoop: 'Close the ring here',
+};
+export function setStrings(s) {
+  S = { ...S, ...s };
+}
 
 // Pass-01 design tokens (tokens.css is the CSS source of truth; canvas needs
 // literals). Dark is the designed theme; light is a TESTING aid (owner ask),
@@ -116,9 +131,13 @@ export function setSelectedTrain(id) {
 
 // --- Projection ---
 
-const FB = { latMax: 59.3320, latMin: 59.2520, lonMin: 18.0400 };
+// The fallback projection's frame and the scale probe come from the city
+// (spec 01 §3.15): a static view when the basemap cannot load.
+const FB = CITY.map.fallback;
 const KM_PER_DEG = 111.32;
-const COS_LAT = Math.cos(59.29 * Math.PI / 180);
+const LAT0 = (FB.latMax + FB.latMin) / 2;
+const COS_LAT = Math.cos(LAT0 * Math.PI / 180);
+const PROBE = [LAT0, CITY.map.center[0]];
 
 function fallbackProject(geo) {
   const pxPerKmV = H / ((FB.latMax - FB.latMin) * KM_PER_DEG);
@@ -151,8 +170,8 @@ export function project(geo) {
 }
 
 export function pxPerKm() {
-  const a = project([59.29, 18.08]);
-  const b = project([59.29 + 1 / 111.32, 18.08]);
+  const a = project(PROBE);
+  const b = project([PROBE[0] + 1 / 111.32, PROBE[1]]);
   return Math.max(1, Math.hypot(a.x - b.x, a.y - b.y));
 }
 
@@ -213,6 +232,7 @@ export function endHandles(g) {
   for (let li = 0; li < g.lines.length; li++) {
     const sts = g.lines[li].stations;
     if (sts.length < 1) continue;
+    if (g.lines[li].loop) continue; // a ring has no end to grab (spec 01 §3.3)
     // A one-station line's head and tail are the same point and the same
     // move; one handle, so a fan never shows the same line twice.
     for (const end of sts.length === 1 ? ['tail'] : ['head', 'tail']) {
@@ -309,9 +329,10 @@ export function nearInsert(g, p) {
   let best = null, bestD = r;
   for (let li = 0; li < g.lines.length; li++) {
     const sts = g.lines[li].stations;
-    for (let seg = 0; seg < sts.length - 1; seg++) {
+    const segs = g.lines[li].loop ? sts.length : sts.length - 1;
+    for (let seg = 0; seg < segs; seg++) {
       const a = project(sts[seg].geo);
-      const b = project(sts[seg + 1].geo);
+      const b = project(sts[(seg + 1) % sts.length].geo);
       const m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
       if (Math.hypot(m.x - a.x, m.y - a.y) < r * 1.6) continue;
       const d = Math.hypot(p.x - m.x, p.y - m.y);
@@ -344,11 +365,14 @@ export function nearStation(g, p) {
 
 // Nearest anchor NOT already on the given line (anchors on other lines are
 // legal: that is an interchange).
-export function nearAnchor(g, p, li) {
+// While dragging a line's end (li given), its own far end is a snap target
+// too when dropping there would close the ring.
+export function nearAnchor(g, p, li, end) {
   const used = li === null ? usedAnchorsAll(g) : usedAnchorsOnLine(g, li);
   let best = null, bestD = snapRadius();
   ANCHORS.forEach((a, i) => {
-    if (used.has(i) || !anchorRevealed(g, i)) return;
+    const closes = li !== null && end && canCloseLoopAt(g, li, end, i);
+    if (!closes && (used.has(i) || !anchorRevealed(g, i))) return;
     const ap = project(a.geo);
     const d = Math.hypot(p.x - ap.x, p.y - ap.y);
     if (d < bestD) { best = i; bestD = d; }
@@ -356,10 +380,28 @@ export function nearAnchor(g, p, li) {
   return best;
 }
 
+// The plan stakes that sit on stations already built (a stop another line
+// must pass through, or a ring's closing point). A click on one extends the
+// line the plan names, like any stake.
+export function nearPlanStake(g, p) {
+  let best = null, bestD = snapRadius();
+  for (const s of planStakes(g)) {
+    if (!s.via && !s.close) continue;
+    const ap = project(ANCHORS[s.anchor].geo);
+    const d = Math.hypot(p.x - ap.x, p.y - ap.y);
+    if (d < bestD) { best = s; bestD = d; }
+  }
+  return best;
+}
+
 // --- Drawing ---
 
+// Latin and digits in Plex Mono, Japanese from the system's own Gothic
+// (spec 01 §3.16): no font is shipped for it, so the dependency list stays
+// one line long. The same stack as --tb-mono in tokens.css.
 function mono(size, weight) {
-  return (weight ? weight + ' ' : '') + (size * uiScale) + 'px "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace';
+  return (weight ? weight + ' ' : '') + (size * uiScale) + 'px "IBM Plex Mono", "Hiragino Sans", ' +
+    '"Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", "Noto Sans JP", ui-monospace, monospace';
 }
 
 // Labels get a halo in void, never a plate (design doc §4); the snapped anchor
@@ -526,60 +568,68 @@ function drawTease(g) {
 function drawAnchors(g) {
   const used = usedAnchorsAll(g);
   const hot = drag ? drag.snap : null;
-  ANCHORS.forEach((a, i) => {
-    if ((used.has(i) || !anchorRevealed(g, i)) && i !== hot) return;
+  if (hot !== null) {
+    const p = project(ANCHORS[hot].geo);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = COL.ink;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+    ctx.fillStyle = COL.ink;
+    ctx.fill();
+    label(ANCHORS[hot].name, p.x + 14, p.y, COL.ink, 12, { plate: true });
+  }
+  // While the coach runs, the whole build affordance speaks up: the
+  // connector goes near-solid and the stake rings larger, because this
+  // ring IS the tutorial and it was too quiet to carry that.
+  const coach = coachBuild(g);
+  const seen = new Set();
+  for (const s of planStakes(g)) {
+    const i = s.anchor;
+    if (i === hot || seen.has(i)) continue;
+    seen.add(i);
+    const a = ANCHORS[i];
     const p = project(a.geo);
-    if (i === hot) {
+    // The stake wears its OWNING line's colour (live feedback 2026-08-08:
+    // players could not tell which line a stake continues), falling back
+    // to ink for a corridor's first, unowned anchor.
+    const colStake = s.line !== null && g.lines[s.line] ? g.lines[s.line].color : COL.ink;
+    if (s.prev !== null && used.has(s.prev)) {
+      const q = project(ANCHORS[s.prev].geo);
       ctx.beginPath();
-      ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
-      ctx.lineWidth = 2.5;
-      ctx.strokeStyle = COL.ink;
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
-      ctx.fillStyle = COL.ink;
-      ctx.fill();
-      label(a.name, p.x + 14, p.y, COL.ink, 12, { plate: true });
-    } else {
-      // The stake wears its OWNING line's colour (live feedback 2026-08-08:
-      // players could not tell which line a stake continues), falling back
-      // to ink for a corridor's first, unowned anchor.
-      const ownerLi = stakeLine(g, i);
-      const colStake = ownerLi !== null ? g.lines[ownerLi].color : COL.ink;
-      // While the coach runs, the whole build affordance speaks up: the
-      // connector goes near-solid and the stake rings larger, because this
-      // ring IS the tutorial and it was too quiet to carry that.
-      const coach = coachBuild(g);
-      const c = corridorOf(i);
-      if (c && i > c.start && used.has(i - 1)) {
-        const q = project(ANCHORS[i - 1].geo);
-        ctx.beginPath();
-        ctx.moveTo(q.x, q.y);
-        ctx.lineTo(p.x, p.y);
-        ctx.setLineDash([3, 6]);
-        ctx.lineWidth = coach ? 3 : 2;
-        ctx.lineCap = 'round';
-        ctx.strokeStyle = colStake;
-        ctx.globalAlpha = coach ? 0.9 : 0.55;
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-        ctx.setLineDash([]);
-      }
-      const pulse = 0.5 + 0.5 * Math.sin(clockT * 2.2);
-      const base = coach ? 7 : 5;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, base + pulse * (coach ? 4 : 2.5), 0, Math.PI * 2);
-      ctx.setLineDash([2, 3]);
-      ctx.lineWidth = 1.5 + pulse * 0.8;
+      ctx.moveTo(q.x, q.y);
+      ctx.lineTo(p.x, p.y);
+      ctx.setLineDash([3, 6]);
+      ctx.lineWidth = coach ? 3 : 2;
+      ctx.lineCap = 'round';
       ctx.strokeStyle = colStake;
-      ctx.globalAlpha = 0.45 + 0.5 * pulse;
+      ctx.globalAlpha = coach ? 0.9 : 0.55;
       ctx.stroke();
       ctx.globalAlpha = 1;
       ctx.setLineDash([]);
-      label(a.name, p.x + 13, p.y, COL.ink, 11);
-      if (coach) label('Build here', p.x + 13, p.y + 14, COL.amber, 11, { weight: 600 });
     }
-  });
+    const pulse = 0.5 + 0.5 * Math.sin(clockT * 2.2);
+    // A stake on a station already standing rings wider, outside its node.
+    const base = (coach ? 7 : 5) + (s.via || s.close ? 7 : 0);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, base + pulse * (coach ? 4 : 2.5), 0, Math.PI * 2);
+    ctx.setLineDash([2, 3]);
+    ctx.lineWidth = 1.5 + pulse * 0.8;
+    ctx.strokeStyle = colStake;
+    ctx.globalAlpha = 0.45 + 0.5 * pulse;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.setLineDash([]);
+    if (!used.has(i)) {
+      // Station numbering beside the name (spec 01 §4 proposal 1): which
+      // line a stake belongs to reads without its colour, too.
+      label(a.name + (a.codes ? ' ' + a.codes.join('·') : ''), p.x + 13, p.y, COL.ink, 11);
+    }
+    if (coach) label(S.buildHere, p.x + 13, p.y + 14, COL.amber, 11, { weight: 600 });
+    if (s.close) label(S.closeLoop, p.x + 16, p.y + 15, colStake, 11, { weight: 600 });
+  }
 }
 
 // The first two minutes, hand held (live report + telemetry 2026-08-09:
@@ -625,13 +675,23 @@ function drawEndHandles(g) {
       ctx.globalAlpha = 0.5 + 0.45 * pulse;
       ctx.stroke();
       ctx.globalAlpha = 1;
-      label('Drag this end to the pulsing ring', h.x + 18, h.y + 18, COL.amber, 12, { weight: 600 });
+      label(S.dragThisEnd, h.x + 18, h.y + 18, COL.amber, 12, { weight: 600 });
     }
   }
 }
 
 function linePoints(L) {
   return L.stations.map((s) => project(s.geo));
+}
+
+// A line's segments as index pairs: a ring adds the closing one, last to
+// first, so everything drawn per segment draws the whole ring.
+function segPairs(L) {
+  const n = L.stations.length;
+  const out = [];
+  for (let i = 0; i + 1 < n; i++) out.push([i, i + 1]);
+  if (L.loop && n >= 3) out.push([n - 1, 0]);
+  return out;
 }
 
 // Trunk segments served by several lines draw side by side (a small
@@ -672,16 +732,16 @@ const TRUNK_GAP = 6;
 export function trunkOffsets(g) {
   const owners = new Map(); // segKey -> [line indices, ascending]
   g.lines.forEach((L, li) => {
-    for (let i = 0; i + 1 < L.stations.length; i++) {
-      const k = segKey(L.stations[i], L.stations[i + 1]);
+    for (const [i, j] of segPairs(L)) {
+      const k = segKey(L.stations[i], L.stations[j]);
       if (!owners.has(k)) owners.set(k, []);
       owners.get(k).push(li);
     }
   });
   return g.lines.map((L, li) => {
     const out = [];
-    for (let i = 0; i + 1 < L.stations.length; i++) {
-      const a = L.stations[i], b = L.stations[i + 1];
+    for (const [i, j] of segPairs(L)) {
+      const a = L.stations[i], b = L.stations[j];
       const list = owners.get(segKey(a, b));
       if (!list || list.length < 2) { out.push(0); continue; }
       out.push((list.indexOf(li) - (list.length - 1) / 2) * TRUNK_GAP);
@@ -696,45 +756,60 @@ function drawAllLines(g) {
     if (L.stations.length < 2) return;
     const P = linePoints(L);
     const off = offsets[li];
-    if (!off.some((v) => v !== 0)) { drawLinePath(P, L.color); return; }
+    const stripe = lineStripe(L);
+    if (!off.some((v) => v !== 0) && !L.loop) {
+      drawLinePath(P, L.color);
+      if (stripe) drawLinePath(P, stripe, 2, [6, 6]);
+      return;
+    }
     // Per-segment strokes so shared stretches can shift sideways; the smooth
     // arcTo corners only exist on unshared lines, a fair trade for legibility.
-    ctx.lineWidth = TRACK_W;
     ctx.lineCap = 'round';
-    ctx.strokeStyle = L.color;
-    for (let i = 0; i + 1 < L.stations.length; i++) {
-      let ax = P[i].x, ay = P[i].y, bx = P[i + 1].x, by = P[i + 1].y;
-      if (off[i]) {
+    segPairs(L).forEach(([i, j], s) => {
+      let ax = P[i].x, ay = P[i].y, bx = P[j].x, by = P[j].y;
+      if (off[s]) {
         // The perpendicular is taken in the segment's CANONICAL direction,
         // the same one trunkOffsets numbered the slots in, so both services
         // agree which side of the track is which however each of them
         // happens to store its stations.
-        const flip = stKey(L.stations[i]) < stKey(L.stations[i + 1]) ? 1 : -1;
+        const flip = stKey(L.stations[i]) < stKey(L.stations[j]) ? 1 : -1;
         const dx = (bx - ax) * flip, dy = (by - ay) * flip;
         const len = Math.hypot(dx, dy) || 1;
-        const nx = (-dy / len) * off[i], ny = (dx / len) * off[i];
+        const nx = (-dy / len) * off[s], ny = (dx / len) * off[s];
         ax += nx; ay += ny; bx += nx; by += ny;
       }
       ctx.beginPath();
       ctx.moveTo(ax, ay);
       ctx.lineTo(bx, by);
+      ctx.lineWidth = TRACK_W;
+      ctx.strokeStyle = L.color;
       ctx.stroke();
-    }
+      if (stripe) {
+        // 名港線's white dashes over its purple (spec 02 §3.1).
+        ctx.setLineDash([6, 6]);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = stripe;
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    });
   });
 }
 
-function drawLinePath(P, color) {
+function drawLinePath(P, color, width, dash) {
   ctx.beginPath();
   ctx.moveTo(P[0].x, P[0].y);
   for (let i = 1; i < P.length - 1; i++) {
     ctx.arcTo(P[i].x, P[i].y, P[i + 1].x, P[i + 1].y, 7);
   }
   ctx.lineTo(P[P.length - 1].x, P[P.length - 1].y);
-  ctx.lineWidth = 6;
+  ctx.lineWidth = width || 6;
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
   ctx.strokeStyle = color;
+  if (dash) ctx.setLineDash(dash);
   ctx.stroke();
+  if (dash) ctx.setLineDash([]);
 }
 
 function drawDragPreview(g) {
@@ -744,7 +819,7 @@ function drawDragPreview(g) {
   // The city's edge: while a drag approaches or crosses the region plan's
   // radius, the boundary shows itself, so the refusal has a visible shape.
   {
-    const centre = project(ANCHORS[0].geo);
+    const centre = project(BUILD_CENTER);
     const rPx = buildRadiusNow(g) * pxPerKm();
     if (Math.hypot(to.x - centre.x, to.y - centre.y) > rPx * 0.82) {
       ctx.beginPath();
@@ -765,7 +840,7 @@ function drawDragPreview(g) {
   ctx.setLineDash(drag.snap !== null ? [] : [5, 5]);
   ctx.lineWidth = 5;
   ctx.lineCap = 'round';
-  ctx.strokeStyle = ok ? (g.lines[drag.li].color || LINE.color) : COL.red;
+  ctx.strokeStyle = ok ? (g.lines[drag.li].color || CITY.start.line.color) : COL.red;
   ctx.globalAlpha = 0.85;
   ctx.stroke();
   ctx.globalAlpha = 1;
@@ -824,7 +899,7 @@ function drawStations(g) {
     for (let i = 0; i < L.stations.length; i++) {
       const p = P[i];
       const s = L.stations[i];
-      const terminus = i === 0 || i === L.stations.length - 1;
+      const terminus = !L.loop && (i === 0 || i === L.stations.length - 1);
       const freeSpot = s.anchor === null;
       const interchange = s.anchor !== null && linesAtAnchor(g, s.anchor) >= 2;
 
@@ -899,18 +974,26 @@ function drawSurge(g) {
   ctx.globalAlpha = 0.9;
   ctx.stroke();
   ctx.globalAlpha = 1;
-  label('RUSH HOUR', p.x + 14, p.y + 14, COL.amber, 10, { weight: 600 });
+  label(S.rushHour, p.x + 14, p.y + 14, COL.amber, 10, { weight: 600 });
 }
 
 // --- Curiosities (pass 03 section e): a faint politic diamond that rewards
 // noticing and never reads as a task. Silverpilen is a TRAIN: at night it
 // glides the green line's geometry, unlisted, unlabeled, silver. ---
 
-// Where Silverpilen is right now (parametric on the wall clock, so it drifts
-// the whole line over ~40 s and vanishes at dawn). Null when it does not run.
+// Where the city's ghost train is right now (Silverpilen, 黄電; spec 01
+// §3.13): parametric on the wall clock, so it drifts the whole line over
+// ~40 s and vanishes at dawn. It rides the line the pack names, by index or
+// by name0, and does not run while that line does not exist.
+const GHOST = CITY.ghostTrain || null;
+function ghostLine(g) {
+  if (!GHOST) return null;
+  if (typeof GHOST.line === 'number') return g.lines[GHOST.line] || null;
+  return g.lines.find((L) => L.name0 === GHOST.line) || null;
+}
 function silverpilenPos(g) {
-  if (dayPhase(g) !== 3 || g.lines[0].stations.length < 3) return null;
-  const L = g.lines[0];
+  const L = ghostLine(g);
+  if (dayPhase(g) !== 3 || !L || L.stations.length < 3) return null;
   const f = (clockT % 40) / 40 * (L.stations.length - 1);
   const i = Math.min(L.stations.length - 2, Math.floor(f));
   const a = project(L.stations[i].geo);
@@ -924,8 +1007,8 @@ export function eggMarks(g) {
   const used = usedAnchorsAll(g);
   const out = [];
   for (const e of EGGS) {
-    if (g.eggs[e.id] || !e.needs(used)) continue;
-    if (e.id === 'silverpilen') {
+    if (g.eggs[e.id] || !e.needs.every((id) => used.has(ANCHORS.findIndex((a) => a.id === id)))) continue;
+    if (GHOST && e.id === GHOST.id) {
       const p = silverpilenPos(g);
       if (p) out.push({ id: e.id, x: p.x, y: p.y, train: true });
       continue;
@@ -950,7 +1033,7 @@ function drawEggs(g) {
       ctx.globalAlpha = 0.85;
       ctx.beginPath();
       ctx.roundRect(m.x - 14, m.y - 8, 28, 16, 2.5);
-      ctx.fillStyle = COL.silver;
+      ctx.fillStyle = (GHOST && GHOST.color) || COL.silver;
       ctx.fill();
       ctx.globalAlpha = 1;
       continue;
@@ -1044,7 +1127,7 @@ function drawIncident(g) {
   ctx.arc(p.x, p.y - 1.8, 0.9, 0, Math.PI * 2);
   ctx.fillStyle = COL.amber;
   ctx.fill();
-  label('SIGNALFEL', p.x + 14, p.y + 14, COL.amber, 10, { weight: 600 });
+  label(S.incident, p.x + 14, p.y + 14, COL.amber, 10, { weight: 600 });
 }
 
 // Every train that has a place on the map, with the exact screen point it is
@@ -1232,7 +1315,7 @@ function drawDepots(g) {
     ctx.fillStyle = COL.bg;
     ctx.fill();
     ctx.lineWidth = 1.6;
-    ctx.strokeStyle = L.color || LINE.color;
+    ctx.strokeStyle = L.color || CITY.start.line.color;
     ctx.stroke();
     ctx.beginPath();
     ctx.moveTo(x - 5, y - 3);

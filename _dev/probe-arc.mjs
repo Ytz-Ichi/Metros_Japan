@@ -11,7 +11,7 @@
 //   node _dev/probe-arc.mjs 3600        # a full hour
 //   node _dev/probe-arc.mjs 900 quiet   # summary only
 import * as sim from '../src/sim.js';
-import { ANCHORS, CORRIDORS } from '../src/data.js';
+const { ANCHORS, CORRIDORS } = sim;
 import { wouldBuyTrain } from './probe-policy.mjs';
 
 const HORIZON = Number(process.argv[2]) || 1200;
@@ -41,7 +41,7 @@ function fmt(n) { return Math.round(n).toLocaleString('en-US'); }
 function nextExtension() {
   const used = sim.usedAnchorsAll(g);
   for (const c of CORRIDORS) {
-    for (let k = c.start; k < c.end; k++) {
+    for (const k of c.anchors) {
       // Skip BUILT anchors: anchorRevealed is true for them, and without this
       // the bot re-bought every corridor stop as a junction share with its
       // other line, shadow-tracking the corridor. That doubled both lines'
@@ -252,7 +252,7 @@ if (stranded.length) console.log('STRANDED above cap: ' + stranded.slice(0, 6).j
 console.log('station ladders: ' + ladderRoom + ' levels of room · tier upgrades ' + tierRoom +
   ' available, ' + tierBlocked + ' blocked (era/trust/money)');
 const nextAnchor = (() => {
-  for (const c of CORRIDORS) for (let k = c.start; k < c.end; k++) if (sim.anchorRevealed(g, k) && !sim.usedAnchorsAll(g).has(k)) return ANCHORS[k].name;
+  for (const c of CORRIDORS) for (const k of c.anchors) if (sim.anchorRevealed(g, k) && !sim.usedAnchorsAll(g).has(k)) return ANCHORS[k].name;
   return null;
 })();
 console.log('next buildable anchor: ' + (nextAnchor || 'none revealed (corridor complete or era-locked)'));

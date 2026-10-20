@@ -14,8 +14,9 @@
    font in the About panel (pass-03 licence rule). */
 
 :root {
-  --tb-serif: "Libre Caslon Display", "Libre Caslon Text", Georgia, "Times New Roman", serif;
-  --tb-serif-text: "Libre Caslon Text", Georgia, serif;
+  /* The newspaper in Japanese sets in Mincho (spec 01 §3.16). */
+  --tb-serif: "Libre Caslon Display", "Libre Caslon Text", "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", Georgia, "Times New Roman", serif;
+  --tb-serif-text: "Libre Caslon Text", "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", Georgia, serif;
 
   /* Era motif colours, from data.js LINE / corridor colours. A surface sets
      --tb-era to one of these and every motif slot follows. */
@@ -82,7 +83,8 @@
 .tb-news__lead { display: flex; flex-direction: column; gap: .7rem; }
 .tb-news__kicker { font: 400 var(--tb-fs-caption)/1 var(--tb-mono); letter-spacing: var(--tb-track-caps);
   text-transform: uppercase; color: var(--tb-era); }
-.tb-news__headline { font: 400 clamp(1.6rem, 4.4vw, 2.7rem)/1.05 var(--tb-serif); text-wrap: balance; }
+.tb-news__headline { font: 400 clamp(1.6rem, 4.4vw, 2.7rem)/1.05 var(--tb-serif); text-wrap: balance;
+  word-break: auto-phrase; /* Japanese breaks between phrases, not mid-word */ }
 .tb-news__lede { font: 400 var(--tb-fs-title)/1.55 var(--tb-serif-text); color: var(--tb-ink);
   max-width: 46ch; text-wrap: pretty; }
 .tb-news__lede::first-letter { float: left; font: 400 3.1em/0.8 var(--tb-serif); padding: .04em .12em 0 0;

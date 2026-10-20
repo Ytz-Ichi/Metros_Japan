@@ -6,7 +6,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+const CHROME = process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const DBG_PORT = 9224;
 const HTTP_PORT = 8126;
 
@@ -192,7 +192,7 @@ async function main() {
       const t = window.__tb;
       if (!t) return 'no handle';
       const { sim, g } = t;
-      const { ANCHORS } = await import('./src/data.js');
+      const { ANCHORS } = await import('./src/sim.js');
       document.getElementById('help-back').click();
       document.getElementById('menu-resume').click();
       const guideShown = !document.getElementById('hints-panel').hidden;
@@ -272,7 +272,7 @@ async function main() {
       s2.click();
       await new Promise((r) => setTimeout(r, 200));
       const freshMoney = t.g.money;
-      const ptr = localStorage.getItem('tunnelbana_slot');
+      const ptr = localStorage.getItem('metros_nagoya_slot');
       const closed = document.getElementById('menu').hidden; // switching drops you into the game
       document.getElementById('menu-open').click();
       document.getElementById('menu-slots').click();
@@ -281,7 +281,7 @@ async function main() {
       return 'rows=' + rows + ' current=' + current + ' armed=' + (armed.length > 0 && stillRich) +
              ' freshIsFresh=' + (freshMoney < richMoney) + ' ptrAfterSwitch=' + ptr +
              ' closedIntoGame=' + closed + ' moneyBack=' + (t.g.money === richMoney) +
-             ' ptrBack=' + localStorage.getItem('tunnelbana_slot');
+             ' ptrBack=' + localStorage.getItem('metros_nagoya_slot');
     })()`));
   } finally {
     chrome.kill();

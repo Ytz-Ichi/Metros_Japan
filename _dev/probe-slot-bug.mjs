@@ -8,7 +8,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+const CHROME = process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const DBG_PORT = 9226;
 const HTTP_PORT = 8127;
 
@@ -38,7 +38,7 @@ async function main() {
   // Build the old-format save with the CURRENT sim (cross-version hydrate is
   // proven clean, so current-format bytes stand in fine for a 0.11.4 save).
   const sim = await import('../src/sim.js');
-  const { ANCHORS } = await import('../src/data.js');
+  const { ANCHORS } = await import('../src/sim.js');
   const g = sim.newGame();
   g.money = 1e6;
   for (let k = 3; k < 13; k++) sim.extendTo(g, 0, 'tail', ANCHORS[k].geo, k);
@@ -92,18 +92,18 @@ async function main() {
       if (!sessionStorage.getItem('tb_seeded')) {
         sessionStorage.setItem('tb_seeded', '1');
         localStorage.clear();
-        localStorage.setItem('tunnelbana_save', ${JSON.stringify(packed)});
+        localStorage.setItem('metros_nagoya_save', ${JSON.stringify(packed)});
       }
     ` });
     await rpc(ws, 'Page.navigate', { url });
     await sleep(3500);
-    console.log('seed intact:', await evaluate(ws, `(localStorage.getItem('tunnelbana_save') || '').slice(0, 20)`));
+    console.log('seed intact:', await evaluate(ws, `(localStorage.getItem('metros_nagoya_save') || '').slice(0, 20)`));
     console.log('boot state:', await evaluate(ws, `(() => {
       const t = window.__tb;
       return JSON.stringify({
         stations: t.g.lines.reduce((n, L) => n + L.stations.length, 0),
         era: t.g.era,
-        slotPtr: localStorage.getItem('tunnelbana_slot'),
+        slotPtr: localStorage.getItem('metros_nagoya_slot'),
         resumeLabel: document.getElementById('menu-resume').textContent,
         noteShown: !document.getElementById('offline-note').hidden,
         note: document.getElementById('offline-note').textContent.slice(0, 80),
@@ -122,7 +122,7 @@ async function main() {
       return JSON.stringify({
         stations: t.g.lines.reduce((n, L) => n + L.stations.length, 0),
         era: t.g.era,
-        slotPtr: localStorage.getItem('tunnelbana_slot'),
+        slotPtr: localStorage.getItem('metros_nagoya_slot'),
         mainView: !document.getElementById('main-view').hidden,
       });
     })()`));

@@ -3,8 +3,56 @@
 // megaprojects, political capital, surges, and offline progress. Aggregate
 // flows, never agents (plan §4). DOM-free so it runs under node for smoke tests.
 
-import { ANCHORS, CORRIDORS, DISTRICTS, START_BUILT, WEST_FIRST, WATER, kmBetween, crossesWater, inRing, densityAt } from './data.js';
-import { EGGS } from './facts.js';
+import CITY from './city/index.js';
+import { kmBetween, inRing, crossesWater as crossesRings, densityAt as densityIn } from './geo.js';
+
+// --- The city pack (spec 01 §2): everything that names a place comes from
+// here. The pack speaks in anchor IDS; the engine resolves them to indices
+// once, at load, because saves and every hot path speak indices. ---
+export { CITY };
+export const ANCHORS = CITY.anchors;
+const ANCHOR_INDEX = new Map(ANCHORS.map((a, i) => [a.id, i]));
+
+// An anchor reference in the pack may be its id or (for start.built) its
+// index; anything else is a pack bug worth failing loudly on at boot.
+export function anchorIndex(ref) {
+  if (Number.isInteger(ref) && ref >= 0 && ref < ANCHORS.length) return ref;
+  if (ANCHOR_INDEX.has(ref)) return ANCHOR_INDEX.get(ref);
+  throw new Error('unknown anchor ' + ref + ' in the ' + CITY.id + ' pack');
+}
+
+const WATER = CITY.water || [];
+const NOBUILD = CITY.nobuild || [];
+const DISTRICTS = CITY.districts || [];
+const START_BUILT = CITY.start.built.map(anchorIndex);
+export const BUILD_CENTER = ANCHORS[CITY.map.buildCenter || 0].geo;
+// The first born hub: where the council's float lands and the default home
+// of the control room.
+const HUB_ANCHOR = Math.max(0, ANCHORS.findIndex((a) => a.hub));
+
+export function crossesWater(a, b) {
+  return crossesRings(a, b, WATER);
+}
+
+export function densityAt(geo) {
+  return densityIn(geo, DISTRICTS);
+}
+
+// Corridors carry anchor indices from here on. `own[k]` marks the anchors
+// the corridor is the FIRST to list (it owns them); the rest it passes
+// through, so a later line can thread an older one's stations (spec 01 §3.2).
+export const CORRIDORS = (() => {
+  const owner = new Map();
+  return CITY.corridors.map((c) => {
+    const anchors = c.anchors.map(anchorIndex);
+    const own = anchors.map((i) => {
+      if (owner.has(i)) return false;
+      owner.set(i, c.id);
+      return true;
+    });
+    return { ...c, anchors, own };
+  });
+})();
 
 export const BAL = {
   startMoney: 900,  // enough that the opening minute ends in a build, not a wait
@@ -103,7 +151,8 @@ export const BAL = {
   tier3CostPk: 8,
   tier3PkGrowth: 1.7,     // each hub costs more trust than the last, so hubs
                           // cannot quietly eat the budget the eras need
-  tier3Era: 1957,          // Knutpunkt unlocks here; T-Centralen is born one
+  tier3Era: CITY.rules.hubEra,  // ERA INDEX where tier 3 unlocks (Stockholm 1957 = 2);
+                                // the pack's born hubs start there
   upgCostBase: { ent: 500, gates: 400, shop: 2200 },
   // Retail rent: the flat-income axis. Steeper than the service axes because it
   // prints money directly, and deliberately small per level: its job is a floor
@@ -182,11 +231,11 @@ export const BAL = {
   // rightfully so" — one player laid track toward Gotland). 13 km from
   // T-Centralen covers every authored anchor with margin (Akalla, the
   // farthest, sits at ~12.4); Regionplanen extends it, within reason.
-  buildRadiusKm: 13,
+  buildRadiusKm: CITY.map.buildRadiusKm ?? 13,
   trackPerKm: 520,         // kr per km of track
   waterMult: 2.0,          // track cost multiplier when the segment crosses water
   minSpacingKm: 0.35,      // same-line stations may not land closer than this
-  maxStations: 90,         // network-wide cap (upgrades can raise it). Was 40
+  maxStations: CITY.rules.maxStations ?? 90, // network-wide cap (upgrades can raise it). Was 40
                            // pre-campaign; the campaign authors 59 anchors, so
                            // the cap must leave room for them plus free spots
   // Trust per second at 100% regional coverage. Sized from the arc, not by
@@ -212,7 +261,7 @@ export const BAL = {
   // grade remembers. The repair crew costs seconds of gross income, so the
   // decision stays real at every scale; waiting it out is always legal and
   // costs nothing but riders' patience. No fail state, ever.
-  incidentEra: 1957,
+  incidentEra: CITY.rules.incidentEra, // era INDEX (Stockholm 1957 = 2)
   incidentEvery: 240,      // seconds between failures once the era allows them
   incidentDur: 45,
   incidentFixGross: 25,    // repair = this many seconds of gross income...
@@ -244,6 +293,9 @@ export const BAL = {
   fleetPerEra: 12,
   offlineCapS: 8 * 3600,   // offline progress simulates at most this long
 };
+// A pack may override constants, shallowly and as little as possible
+// (spec 01 §3.19); every override is measured with value-gate and probe-arc.
+Object.assign(BAL, CITY.rules.balance || {});
 
 // The era arc. Advancing costs political capital and requires ridership; each
 // era unlocks its slice of the catalog (and the Västerort megaproject in 1952).
@@ -280,17 +332,14 @@ export const BAL = {
 // WITH: newGame snapshots this table into g.eraGoals and hydrate gives
 // saves without the field the pre-0.14.0 numbers, because a player 90
 // percent of the way to an era must never watch the goal walk away.
-export const ERAS = [
-  { year: 1950 },
-  { year: 1952, pk: 5,  delivered: 20000 },
-  { year: 1957, pk: 12, delivered: 80000 },
-  { year: 1964, pk: 25, delivered: 230000 },
-  { year: 1975, pk: 50, delivered: 440000 },
-  { year: 2000, pk: 90, delivered: 780000 },
-];
+// The table itself now lives in the city pack (spec 01 §3.14): the year
+// is for display, and everything that gates (the catalog, the council, the
+// hub and incident eras) speaks the era INDEX.
+export const ERAS = CITY.eras;
 
-// What every save made before eraGoals existed was promised.
-const ERA_GOALS_PRE_014 = [0, 20000, 80000, 180000, 340000, 600000];
+// What a save written without eraGoals was promised. Only Stockholm has
+// such saves (pre 0.14.0); a new city's saves always carry the field.
+const ERA_GOALS_LEGACY = CITY.rules.legacyEraGoals || ERAS.map((e) => e.delivered || 0);
 
 // The upgrade CATALOG (plan §6, Cookie Clicker direction): upgrades are DATA, and
 // their effects compose through named modifiers, never through code reading BAL
@@ -309,13 +358,11 @@ const ERA_GOALS_PRE_014 = [0, 20000, 80000, 180000, 340000, 600000];
 // respect pkCap like the golden train's nod. A save that already holds the
 // achievement keeps its modifiers automatically and is never re-paid the
 // one time grant.
-export const ACHIEVEMENTS = [
+const BASE_ACHIEVEMENTS = [
   { id: 'first-departure', name: 'Invigning', hint: 'Send out your first train',
     check: (g) => g.opened, add: { demand: 0.01 } },
   { id: 'ten-stations', name: 'A line worth the name', hint: 'Run ten stations',
     check: (g) => stationCount(g) >= 10, add: { demand: 0.02, fleetMax: 1 } },
-  { id: 'full-1950', name: 'Hökarängen', hint: 'Complete the 1950 line',
-    check: (g) => usedAnchorsAll(g).size >= 13, mult: { fare: 1.02 }, reward: { kr: 2500 } },
   { id: 'hundred-k', name: 'Hundred thousand journeys', hint: 'Carry 100 000 riders',
     check: (g) => g.totalDelivered >= 1e5, mult: { fare: 1.02 }, reward: { kr: 5000 } },
   { id: 'million', name: 'A million rides', hint: 'Carry 1 000 000 riders',
@@ -340,10 +387,6 @@ export const ACHIEVEMENTS = [
     }, add: { demand: 0.02 }, reward: { pk: 2 } },
   { id: 'three-lines', name: 'A network', hint: 'Run three lines at once',
     check: (g) => g.lines.length >= 3, add: { demand: 0.03, fleetMax: 1 } },
-  { id: 'red-line', name: 'Röda linjen', hint: 'Reach Fruängen',
-    check: (g) => usedAnchorsAll(g).has(35), mult: { fare: 1.03 } },
-  { id: 'blue-line', name: 'Blå linjen', hint: 'Reach Hjulsta',
-    check: (g) => usedAnchorsAll(g).has(52), mult: { fare: 1.03 } },
   { id: 'whole-map', name: 'Hela Stockholm', hint: 'Connect every station on the map',
     check: (g) => usedAnchorsAll(g).size >= ANCHORS.length, mult: { fare: 1.05 } },
   { id: 'millionaire', name: 'A million kronor', hint: 'Hold 1 000 000 kr at once',
@@ -371,13 +414,13 @@ export const ACHIEVEMENTS = [
     check: (g) => (g.trainMoves || 0) >= 1, add: { demand: 0.01 } },
   { id: 'under-water', name: 'Under Strömmen', hint: 'Take a line across the water yourself',
     check: (g) => {
-      // The STARTING line already crosses Norrström and Söderström (screenshot
-      // pass: the toast fired at boot), so the aim is a THIRD crossing: one
-      // the player dug.
+      // The STARTING line may already cross water (Stockholm's crosses
+      // Norrström and Söderström, and the toast fired at boot), so the aim
+      // is one crossing beyond those: one the player dug.
       let n = 0;
       for (const L of g.lines) {
         for (let i = 0; i + 1 < L.stations.length; i++) {
-          if (crossesWater(L.stations[i].geo, L.stations[i + 1].geo) && ++n >= 3) return true;
+          if (crossesWater(L.stations[i].geo, L.stations[i + 1].geo) && ++n >= START_CROSSINGS + 1) return true;
         }
       }
       return false;
@@ -392,16 +435,6 @@ export const ACHIEVEMENTS = [
   // and only a handful of hard aims carry a token. Categories, hidden flags
   // and tier families live in ACH_META below; the checks stay data. ---
   // history
-  { id: 'vasterort', name: 'Västerort', hint: 'Complete the 1952 line to Vällingby',
-    check: (g) => !!g.planDone['green-west'] },
-  { id: 'genom-staden', name: 'Genom staden', hint: 'Reach 1957: the lines become a system',
-    check: (g) => g.era >= 2 },
-  { id: 'red-complete', name: 'Söder om Söder', hint: 'Deliver every red corridor',
-    check: (g) => g.planDone['red-south'] && g.planDone['red-orn'] && g.planDone['red-ost'] },
-  { id: 'blue-complete', name: 'Järvafältet', hint: 'Deliver both blue corridors',
-    check: (g) => g.planDone['blue-main'] && g.planDone['blue-akalla'] },
-  { id: 'charters', name: 'Three charters', hint: 'Take all three megaproject lines',
-    check: (g) => g.owned.westline && g.owned.redline && g.owned.blueline },
   { id: 'slutstation', name: 'SLUTSTATION', hint: 'The last station',
     check: (g) => g.endingSeen },
   // building
@@ -538,7 +571,7 @@ export const ACHIEVEMENTS = [
   { id: 'egg-first', name: 'Something in the fabric', hint: 'There are odd corners in this city',
     check: (g) => g.eggsFound >= 1 },
   { id: 'egg-all', name: 'Every odd corner', hint: 'Find them all',
-    check: (g) => g.eggsFound >= 6 },
+    check: (g) => g.eggsFound >= (CITY.eggs || []).length },
   // v12: the council. Recognition only, like the 0.11 top-up.
   { id: 'first-decision', name: 'The chamber nods', hint: 'Take a council decision',
     check: (g) => g.decisions >= 1 },
@@ -547,10 +580,6 @@ export const ACHIEVEMENTS = [
   // --- The 0.11 top-up: past one hundred (owner: "ideally 100+, some easy,
   // some very hard"). All recognition, no modifiers: the reward budget from
   // pass 01 stays where it is. ---
-  { id: 'era-1964', name: 'Två färger', hint: 'Reach 1964',
-    check: (g) => g.era >= 3 },
-  { id: 'era-1975', name: 'Under Järvafältet', hint: 'Reach 1975',
-    check: (g) => g.era >= 4 },
   { id: 'plan-all', name: 'Generalplanen', hint: 'Deliver every corridor in the plan',
     check: (g) => CORRIDORS.every((c) => g.planDone[c.id]) },
   { id: 'junction-five', name: 'The weave holds five', hint: 'Run five interchanges at once',
@@ -568,7 +597,7 @@ export const ACHIEVEMENTS = [
       let n = 0;
       for (const L of g.lines) {
         for (let i = 0; i + 1 < L.stations.length; i++) {
-          if (crossesWater(L.stations[i].geo, L.stations[i + 1].geo) && ++n >= 4) return true;
+          if (crossesWater(L.stations[i].geo, L.stations[i + 1].geo) && ++n >= START_CROSSINGS + 2) return true;
         }
       }
       return false;
@@ -626,6 +655,27 @@ export const ACHIEVEMENTS = [
     check: (g) => g.goldTaken >= 25 },
 ];
 
+// How many water crossings the opening line already makes, so the water
+// aims count only the player's own digging.
+const START_CROSSINGS = START_BUILT.reduce((n, a, k) =>
+  n + (k > 0 && crossesWater(ANCHORS[START_BUILT[k - 1]].geo, ANCHORS[a].geo) ? 1 : 0), 0);
+
+// The city's own history aims (spec 01 §3.11) join the common set. Their
+// checks receive helpers that speak anchor and corridor IDS, so a pack never
+// writes an index.
+const ACH_HELPERS = (g) => ({
+  used: (id) => usedAnchorsAll(g).has(anchorIndex(id)),
+  usedCount: () => usedAnchorsAll(g).size,
+  planDone: (id) => !!g.planDone[id],
+  owned: (id) => !!g.owned[id],
+  era: () => g.era,
+  loop: (name0) => g.lines.some((L) => L.loop && L.name0 === name0),
+});
+export const ACHIEVEMENTS = [
+  ...BASE_ACHIEVEMENTS,
+  ...(CITY.achievements || []).map((a) => ({ ...a, check: (g) => a.check(g, ACH_HELPERS(g)) })),
+];
+
 // Presentation metadata by id: category, hidden (shown as ??? with a tease
 // until earned), and tier families (rows the list draws as one aim with
 // dots). checkAchievements ignores all of this; earning is earning.
@@ -641,14 +691,6 @@ export const ACH_CATS = [
 ];
 export const ACH_META = {
   'first-departure': { cat: 'history' },
-  'full-1950': { cat: 'history' },
-  'vasterort': { cat: 'history' },
-  'genom-staden': { cat: 'history' },
-  'red-line': { cat: 'history' },
-  'red-complete': { cat: 'history' },
-  'blue-line': { cat: 'history' },
-  'blue-complete': { cat: 'history' },
-  'charters': { cat: 'history' },
   'final-era': { cat: 'history' },
   'whole-map': { cat: 'history' },
   'slutstation': { cat: 'history', hidden: true, tease: 'The last station' },
@@ -723,8 +765,6 @@ export const ACH_META = {
   'egg-all': { cat: 'endgame', hidden: true, tease: 'Every odd corner' },
   'first-decision': { cat: 'trust', family: 'council' },
   'full-mandate': { cat: 'trust', family: 'council' },
-  'era-1964': { cat: 'history' },
-  'era-1975': { cat: 'history' },
   'plan-all': { cat: 'history' },
   'junction-five': { cat: 'building' },
   'ten-lines': { cat: 'building', family: 'lines' },
@@ -749,6 +789,9 @@ export const ACH_META = {
   'gold-first': { cat: 'money', family: 'gold', hidden: true, tease: 'Something glitters on the line' },
   'gold-25': { cat: 'money', family: 'gold' },
 };
+for (const a of CITY.achievements || []) {
+  ACH_META[a.id] = { cat: a.cat || 'history', hidden: a.hidden, tease: a.tease };
+}
 
 // Checked once a second rather than every tick: eighteen predicates over a live
 // network is not free, and none of them needs sub-second latency.
@@ -778,15 +821,15 @@ export function checkAchievements(g) {
   }
 }
 
-export const CATALOG = [
+const BASE_CATALOG = [
   // Train growth 1.6 -> 1.25 with the 0.14.0 fleet expansion: a ladder that
   // made train 20 a 7.5M kr decision cannot sell a 50 train fleet. Measured,
   // not guessed: at 1.2 the probe-arc bot binged seventeen trains inside era
   // 1950, drowned in upkeep and never reached 1952, so the ladder still owns
   // the opening discipline while the caps and the upkeep knee own the rest.
-  { id: 'train',      base: 600,  growth: 1.25, max: 10, era: 1950, kind: 'fleet',
+  { id: 'train',      base: 600,  growth: 1.25, max: 10, era: 0, kind: 'fleet',
     costKey: 'trainCost' },
-  { id: 'drivers',    base: 900,  growth: 1,   max: 1, era: 1950 },
+  { id: 'drivers',    base: 900,  growth: 1,   max: 1, era: 0 },
   // timetable max is 1 (was 3, was 6): each cap is a measurement. Levels 4-6
   // died at the spawn ceiling; when base train speed halved (2026-08-04)
   // cycles doubled and NO reachable fleet gets terminus spacing under the
@@ -796,20 +839,20 @@ export const CATALOG = [
   // timetable buys regularity. Deeper signalling floors return with the
   // red/blue line inventory IF they earn a job then; CBTC carries the late
   // dispatch story meanwhile.
-  { id: 'timetable',  base: 1400, growth: 1.8, max: 1, era: 1950, needs: 'drivers',
+  { id: 'timetable',  base: 1400, growth: 1.8, max: 1, era: 0, needs: 'drivers',
     mult: { dispatchInterval: 0.82 } },
-  { id: 'capacity',   base: 800,  growth: 1.7, max: 6, era: 1950,
+  { id: 'capacity',   base: 800,  growth: 1.7, max: 6, era: 0,
     add: { trainCap: 60 } },
-  { id: 'bogies',     base: 1200, growth: 1,   max: 1, era: 1950,
+  { id: 'bogies',     base: 1200, growth: 1,   max: 1, era: 0,
     mult: { speed: 0.9 } },
-  { id: 'turnstiles', base: 1600, growth: 1,   max: 1, era: 1950,
+  { id: 'turnstiles', base: 1600, growth: 1,   max: 1, era: 0,
     mult: { fare: 1.05 } },
   // --- The 0.11 batch, aimed at the measured 1957 desert (probe-arc
   // 2026-08-08: three dead zones totalling ~20 min between t=2118 and 3550,
   // catalog maxed, 2.4M kr idle). All unlock by PLAY, not calendar. ---
-  { id: 'escalators', base: 2600, growth: 1.9, max: 3, era: 1952, unlock: { stations: 10 },
+  { id: 'escalators', base: 2600, growth: 1.9, max: 3, era: 1, unlock: { stations: 10 },
     add: { gateRate: 25 } },
-  { id: 'hosts',      base: 5200, growth: 2,   max: 2, era: 1957, unlock: { delivered: 60000 },
+  { id: 'hosts',      base: 5200, growth: 2,   max: 2, era: 2, unlock: { delivered: 60000 },
     mult: { abandon: 0.75 } },
   // 'seasonpass' (fares down, demand up: the first CHOICE upgrade) was CUT
   // here by measurement, not taste: -19.96 kr/s in its own demand-slack
@@ -817,86 +860,105 @@ export const CATALOG = [
   // instantly while added demand converts at ~0.2 kr/s per percent. A real
   // trade needs an economy where demand converts harder; revisit with
   // mid-game demand growth, like the depot lesson.
-  { id: 'adverts',    base: 20000, growth: 2.2, max: 2, era: 1957, unlock: { retail: 25 },
+  { id: 'adverts',    base: 20000, growth: 2.2, max: 2, era: 2, unlock: { retail: 25 },
     mult: { retail: 1.5 } },
   // The statistics office: pure information, priced as a treat (owner ask
   // 2026-08-07: stats are a thing incremental players BUY into). Not graded
   // by the value gate, like atc: legibility purchases earn attention, not kr.
-  { id: 'stats',      base: 4000, growth: 1,   max: 1, era: 1952, kind: 'stats' },
-  { id: 'westline',   base: 5,    growth: 1,   max: 1, era: 1952, currency: 'pk', kind: 'project' },
-  // The campaign charters (owner direction 2026-08-04): each era's line can be
-  // chartered as a megaproject seeding T-Centralen plus the corridor's first
-  // stop, with a gift train; or the player ignores it and builds there
-  // themselves (the corridor's stakes appear either way).
-  { id: 'redline',    base: 10,   growth: 1,   max: 1, era: 1964, currency: 'pk', kind: 'project' },
-  { id: 'blueline',   base: 16,   growth: 1,   max: 1, era: 1975, currency: 'pk', kind: 'project' },
-  { id: 'entrances',  base: 2200, growth: 1.7, max: 3, era: 1952,
+  { id: 'stats',      base: 4000, growth: 1,   max: 1, era: 1, kind: 'stats' },
+  // The campaign charters (owner direction 2026-08-04) are injected here
+  // from the city pack's projects: each era's line can be chartered as a
+  // megaproject seeding its first stops with a gift train, or the player
+  // ignores it and builds there themselves (the stakes appear either way).
+  { id: '@projects' },
+  { id: 'entrances',  base: 2200, growth: 1.7, max: 3, era: 1,
     add: { demand: 0.1 } },
-  { id: 'through',    base: 8,    growth: 1,   max: 1, era: 1957, currency: 'pk',
+  { id: 'through',    base: 8,    growth: 1,   max: 1, era: 2, currency: 'pk',
     mult: { transfer: 1.5 } },
-  { id: 'stock1957',  base: 3000, growth: 1,   max: 1, era: 1957,
+  { id: 'stock1957',  base: 3000, growth: 1,   max: 1, era: 2,
     mult: { speed: 0.92 } },
   // Trafikledning (owner ask 2026-08-07): the unlock for player-set service
   // patterns. The pattern itself is free to edit; this buys the RIGHT to run
   // your own timetable. An enabler, not value-graded; the pattern's economy
   // is guarded by a smoke sanity rail instead.
-  { id: 'patterns',   base: 8000, growth: 1,   max: 1, era: 1957, kind: 'patterns' },
+  { id: 'patterns',   base: 8000, growth: 1,   max: 1, era: 2, kind: 'patterns' },
   // atc is HOLDING control priced as COMFORT, not throughput (report 638 §2:
   // terminus dispatch already regularises the service, so holding rarely fires
   // until event-driven turnaround lands in M5; a legibility purchase must not
   // be graded by the kr/s gate). Cheap on purpose.
-  { id: 'atc',        base: 2,    growth: 1,   max: 1, era: 1964, currency: 'pk', kind: 'holding' },
+  { id: 'atc',        base: 2,    growth: 1,   max: 1, era: 3, currency: 'pk', kind: 'holding' },
   // The works department (owner ask 2026-08-07): late-game bulk station
   // upgrades, because clicking 59 stations three axes deep is a chore the
   // genre solved a decade ago. An enabler like stats: not value-gate graded.
-  { id: 'works',      base: 30000, growth: 1,  max: 1, era: 1964, kind: 'works' },
+  { id: 'works',      base: 30000, growth: 1,  max: 1, era: 3, kind: 'works' },
   // 'diagram' (Linjekartan) left the catalog in v12: the schematic map is a
   // REWARD for beating the first era (owner ruling 2026-08-08). The toggle
   // reads g.era; nothing is bought, and old saves' owned key drops silently.
-  { id: 'c4stock',    base: 6000, growth: 1,   max: 1, era: 1964,
+  { id: 'c4stock',    base: 6000, growth: 1,   max: 1, era: 3,
     mult: { speed: 0.9 } },
   // 'depot' removed pending M4: the fleet knee sits near 3 trains per line at
   // current demand ceilings (value-gate measurement), so raising fleetMax is
   // dead content until per-station demand growth exists. Depots return in M4
   // as PLACES (report 634 idea 8), not as a number.
-  { id: 'c14stock',   base: 15000, growth: 1,  max: 1, era: 1975,
+  { id: 'c14stock',   base: 15000, growth: 1,  max: 1, era: 4,
     mult: { speed: 0.9 } },
-  { id: 'zonefare',   base: 20000, growth: 1,  max: 1, era: 1975,
+  { id: 'zonefare',   base: 20000, growth: 1,  max: 1, era: 4,
     mult: { fare: 1.15 } },
   // Late sinks (report 638 §5): thresholds without sinks just make the player
   // wait with a full wallet. Moved 1964 -> 1957 in 0.11 (historically right:
   // the art programme began with T-Centralen in 1957) and deepened to three
   // steep levels, because the 1957 desert needed ~600k of things to want.
-  { id: 'artstation', base: 45000, growth: 3,  max: 3, era: 1957,
+  { id: 'artstation', base: 45000, growth: 3,  max: 3, era: 2,
     add: { demand: 0.15 } },
   // cbtc is frequency AND speed (moving-block signalling lets trains run
   // closer and brake later); pure frequency saturates at reachable demand.
-  { id: 'cbtc',       base: 60000, growth: 1,  max: 1, era: 1975, needs: 'atc',
+  { id: 'cbtc',       base: 60000, growth: 1,  max: 1, era: 4, needs: 'atc',
     mult: { dispatchInterval: 0.8, speed: 0.93 } },
-  { id: 'nightservice', base: 80000, growth: 1, max: 1, era: 1975,
+  { id: 'nightservice', base: 80000, growth: 1, max: 1, era: 4,
     mult: { night: 2 } },
   // v12 late pair. Platforms raise the WAITING cap (the queue the platform
   // physically holds), the axis crowding and abandonment bite on; capacity
   // stays the train axis. The depot pays at night: a stabled fleet is not a
   // running fleet, so train upkeep falls while the city sleeps.
-  { id: 'platforms',  base: 30000, growth: 2.2, max: 3, era: 1957, unlock: { stations: 12 },
+  { id: 'platforms',  base: 30000, growth: 2.2, max: 3, era: 2, unlock: { stations: 12 },
     add: { stationCap: 30 } },
   // Measured +1.20/s flat (sd 0.00, THIN at 0.44% of base): the saving is
   // pure upkeep arithmetic and exactly what the card claims. The depot is
   // also a PLACE (the hall on the map, the stabled bar), so it ships thin
   // by the same ruling as atc's comfort.
-  { id: 'depot',      base: 55000, growth: 1, max: 1, era: 1957, unlock: { delivered: 60000 },
+  { id: 'depot',      base: 55000, growth: 1, max: 1, era: 2, unlock: { delivered: 60000 },
     mult: { nightUpkeep: 0.4 } },
   // Driftcentralen: the real control room above T-Centralen. The permanent
   // answer to fleet-scaled upkeep, one per city, only where the hub exists.
-  { id: 'driftcentral', base: 300000, growth: 1, max: 1, era: 1964, unlock: { anchor: 0 },
+  { id: 'driftcentral', base: 300000, growth: 1, max: 1, era: 3, unlock: { anchorId: ANCHORS[HUB_ANCHOR].id },
     mult: { fleetUpkeep: 0.7 } },
   // Regionplanen: permission to build beyond the city's edge, the first
   // upgrade whose product is SPACE. Late, steep, two levels (13 -> 17 -> 21
   // km), so "outside Stockholm, within reason" stays within reason.
-  { id: 'region',     base: 120000, growth: 2.5, max: 2, era: 1975,
+  { id: 'region',     base: 120000, growth: 2.5, max: 2, era: 4,
     add: { buildRadius: 4 } },
 ];
+
+// The catalog the game sells: the common items with the pack's charters in
+// place of '@projects', then the pack's per-item overrides (era, unlock) and
+// its own additions, each placed `after` an existing id (spec 01 §3.5, §3.14).
+export const CATALOG = (() => {
+  const out = [];
+  for (const item of BASE_CATALOG) {
+    if (item.id !== '@projects') { out.push({ ...item }); continue; }
+    for (const p of CITY.projects || []) {
+      out.push({ id: p.id, base: p.pk, growth: 1, max: 1, era: p.era, currency: 'pk', kind: 'project' });
+    }
+  }
+  for (const [id, o] of Object.entries(CITY.catalog || {})) {
+    const have = out.find((x) => x.id === id);
+    if (have) { Object.assign(have, o); continue; }
+    const { after, ...item } = o;
+    const at = after ? out.findIndex((x) => x.id === after) : -1;
+    out.splice(at >= 0 ? at + 1 : out.length, 0, { id, ...item });
+  }
+  return out;
+})();
 
 // --- The council (v12, pass 04 section a): trust buys DECISIONS, not
 // upgrades. A decision is permanent, often rules something out, and keeps
@@ -917,7 +979,7 @@ export const COUNCIL_TIERS = [
   { name: 'Corridor', era: 2 },
   { name: 'Mandate', era: 3 },
   { name: 'Region', era: 4 },
-];
+].map((t, i) => ({ ...t, ...((CITY.council && CITY.council.tiers && CITY.council.tiers[i]) || {}) }));
 
 export const COUNCIL = [
   { id: 'subsidise-suburbs', name: 'Subsidise the suburbs', cat: 'growth', tier: 0, pk: 4,
@@ -996,7 +1058,7 @@ export function decide(g, id) {
     g._netRev2 = undefined;
   }
   computeDemand(g); // a demand-shaped decision applies this instant
-  g.events.push({ type: 'council', name: d.name, geo: ANCHORS[0].geo });
+  g.events.push({ type: 'council', id: d.id, name: d.name, geo: ANCHORS[HUB_ANCHOR].geo });
   return true;
 }
 
@@ -1074,17 +1136,18 @@ function anchorStation(i) {
   return makeStation(a.name, a.geo, i, a.hub ? 3 : 1);
 }
 
-// Founding-order palette; the real green stays line 1's (report 634 risk 3).
-export const LINE_COLORS = ['#35a86b', '#4f8fd4', '#c8544a', '#b06fa8', '#8fae4a', '#6fd6b0'];
-export const MAX_LINES = LINE_COLORS.length;
-export const SANDBOX_MAX_LINES = 16; // the final era lifts the cap. A DESIGN choice,
+// Founding-order palette; the first line's real colour stays line 1's
+// (report 634 risk 3), the rest is the pack's free palette.
+export const LINE_COLORS = [CITY.start.line.color, ...CITY.lines.palette];
+export const MAX_LINES = CITY.rules.maxLines || LINE_COLORS.length;
+export const SANDBOX_MAX_LINES = CITY.rules.sandboxLines || 16; // the final era lifts the cap. A DESIGN choice,
 // not perf: report 646 measured 12 lines at 59 stations costing ~0.025 ms/frame
 // (cost tracks stations-per-line squared, not line count)
 
 // The sandbox era removes the line-count constraint (owner direction: "have
 // as many lines as they want"). Before it, the authored palette is the cap.
 export function maxLinesNow(g) {
-  return eraYear(g) >= 2000 ? SANDBOX_MAX_LINES : MAX_LINES;
+  return g.era >= ERAS.length - 1 ? SANDBOX_MAX_LINES : MAX_LINES;
 }
 
 // Line colours beyond the authored palette (sandbox): hues spread by the
@@ -1145,19 +1208,25 @@ export function clearTrainName(g, id) {
 // Colours the campaign has already promised. Blue belongs to Blå linjen (1975)
 // and red to Röda linjen (1964), so nothing else may wear them: a 1952 line
 // painted blue tells the player they unlocked something they did not.
-export const LINE_IDENTITY = {
-  westline: { name: 'Västerortsbanan', color: '#6fd6b0' }, // historically the green line's west arm
-  redline:  { name: 'Röda linjen',     color: '#c8544a' },
-  blueline: { name: 'Blå linjen',      color: '#4f8fd4' },
-};
-const RESERVED = new Set(['#c8544a', '#4f8fd4', '#6fd6b0']);
+export const LINE_IDENTITY = CITY.lines.identities;
+const RESERVED = new Set(CITY.lines.reserved.map((c) => c.toLowerCase()));
+const FIRST_NAME = CITY.start.line.name;
+const foundedName = CITY.lines.foundedName;
+const FOUNDED_FROM = CITY.lines.foundedFrom ?? 2;
+
+// A line's stripe (名港線's white dashes, spec 02 §3.1) comes from the
+// identity that gave it its name, so it never needs saving.
+export function lineStripe(L) {
+  for (const id of Object.values(LINE_IDENTITY)) if (id.name === L.name0 && id.stripe) return id.stripe;
+  return null;
+}
 
 // Player-founded lines take the next palette colour that is not spoken for.
 export function foundedColor(g) {
   const taken = new Set(g.lines.map((L) => L.color));
   for (let i = 0; i < 40; i++) {
     const c = lineColor(i);
-    if (!taken.has(c) && !RESERVED.has(c) && c !== LINE_COLORS[0]) return c;
+    if (!taken.has(c) && !RESERVED.has(c.toLowerCase()) && c !== LINE_COLORS[0]) return c;
   }
   return lineColor(g.lines.length);
 }
@@ -1169,15 +1238,16 @@ export function foundedColor(g) {
 // to tell them apart either (found in the bug round).
 function nextLineName(g) {
   const taken = new Set((g && g.lines ? g.lines : []).flatMap((L) => [L.name, L.name0]));
-  for (let n = 2; n < 200; n++) {
-    const name = 'Linje ' + n;
+  for (let n = FOUNDED_FROM; n < FOUNDED_FROM + 200; n++) {
+    const name = foundedName(n);
     if (!taken.has(name)) return name;
   }
-  return 'Linje ' + ((g && g.lines ? g.lines.length : 0) + 1);
+  return foundedName(FOUNDED_FROM + (g && g.lines ? g.lines.length : 0));
 }
 
 function newLine(stations, colorIdx, identity, name) {
-  const given = identity?.name || name || (colorIdx === 0 ? 'Gröna linjen' : 'Linje ' + (colorIdx + 1));
+  const given = identity?.name || name ||
+    (colorIdx === 0 ? FIRST_NAME : foundedName(FOUNDED_FROM + colorIdx - 1));
   return {
     stations,
     name: given,
@@ -1192,7 +1262,10 @@ function newLine(stations, colorIdx, identity, name) {
     waitingB: stations.map((s) => BAL.seedWaiting * s.mult / 2),
     left60: stations.map(() => 0),
     leaveAcc: stations.map(() => 0),
-    lastDepart: [-Infinity, -Infinity], // per end: [head, tail]
+    lastDepart: [-Infinity, -Infinity], // per end: [head, tail]; per direction on a loop
+    // A closed ring (spec 01 §3.3): no ends, trains circle in both
+    // directions. Saved; only ever true at four or more stations.
+    loop: false,
     lastPassF: stations.map(() => -Infinity), // last forward departure per station
     lastPassB: stations.map(() => -Infinity),
     // The player's wanted train count for this line (0.15.2). null is no
@@ -1290,7 +1363,8 @@ export function newGame() {
     era: 0,
     eraGoals: ERAS.map((e) => e.delivered || 0), // this game's rider gates, fixed at birth
 
-    lines: [newLine(Array.from({ length: START_BUILT }, (_, i) => anchorStation(i)), 0)],
+    city: CITY.id,
+    lines: [newLine(START_BUILT.map((i) => anchorStation(i)), 0)],
     nextTrainId: 2,  // the starting train takes 1; ids are never reused
     trains: [newTrain(0, 1)],
     // Pending depot transfers, fee already paid: { from, to } for the line
@@ -1400,6 +1474,17 @@ export function minHeadway(g) {
 // levels then pay on DENSE lines, where the floor itself binds the target.
 export function lineCycleEst(g, li) {
   const L = g.lines[li];
+  if (L.loop) {
+    // A ring's cycle is one lap: every segment once, the closing one
+    // included, a stop at every station, and no turnaround anywhere.
+    let t = 0;
+    const n = L.stations.length;
+    for (let i = 0; i < n; i++) {
+      t += moveTime(g, kmBetween(L.stations[i].geo, L.stations[(i + 1) % n].geo));
+      t += Math.max(BAL.minDwell, BAL.baseDwell[L.stations[i].tier]);
+    }
+    return t;
+  }
   let t = 2 * BAL.turnaroundS;
   for (let i = 0; i + 1 < L.stations.length; i++) {
     t += 2 * moveTime(g, kmBetween(L.stations[i].geo, L.stations[i + 1].geo));
@@ -1417,7 +1502,9 @@ export function lineCycleEst(g, li) {
 export function lineHeadwayS(g, li) {
   const active = g.trains.reduce((n, t) => n + (t.line === li && !t.mothballed ? 1 : 0), 0);
   if (!active) return Infinity;
-  return Math.max(minHeadway(g), lineCycleEst(g, li) / (2 * active));
+  // A train passes each stop twice per round trip on a line, once per lap
+  // on a ring.
+  return Math.max(minHeadway(g), lineCycleEst(g, li) / ((g.lines[li].loop ? 1 : 2) * active));
 }
 
 // Rent from every station's commerce, counted once per physical station and
@@ -1586,17 +1673,44 @@ export function usedAnchorsAll(g) {
 // Hötorget appears in 1952, whether the player takes the megaproject or
 // builds there themselves). This is the campaign's core mechanic: a new era
 // = a new corridor's first stake appearing on the map.
+// A corridor's stops are walked in order from its railhead, and the next
+// one not yet delivered is its stake (spec 01 §3.2): a stop it passes
+// through that its line already serves counts as delivered and is skipped. A corridor that has
+// not begun shows its stake only once its era has arrived. Every corridor
+// offers at most one stake, and an anchor is revealed if any corridor is
+// offering it.
 export function corridorOf(i) {
-  return CORRIDORS.find((c) => i >= c.start && i < c.end);
+  return CORRIDORS.find((c) => c.anchors.some((a, k) => a === i && c.own[k]));
+}
+
+// The line a corridor's plan is FOR: the one carrying its name (name0
+// survives renames), if the player has it. -1 when there is none.
+function corridorLineIdx(g, c) {
+  if (!c.line) return -1;
+  return g.lines.findIndex((L) => L.name0 === c.line);
+}
+
+// Is the corridor's k-th stop delivered? A stop it owns counts once it is
+// built at all. A stop it passes THROUGH counts once the corridor's own line
+// calls there, because that interchange is what the plan promised (鶴舞線
+// must actually call at 上前津, not merely pass a station 名城線 built);
+// while that line does not exist, any line will do. A ring's closing entry
+// counts only once the ring is closed.
+function stopDone(g, c, k, used, li) {
+  const a = c.anchors[k];
+  if (c.closeLoop && k === c.anchors.length - 1) {
+    return g.lines.some((L) => L.loop && L.stations.some((s) => s.anchor === a));
+  }
+  if (c.own[k] || li < 0) return used.has(a);
+  return g.lines[li].stations.some((s) => s.anchor === a);
 }
 
 export function corridorBegun(g, c) {
   const used = usedAnchorsAll(g);
-  for (let k = c.start; k < c.end; k++) if (used.has(k)) return true;
-  return false;
+  return c.anchors.some((a, k) => c.own[k] && used.has(a));
 }
 
-// --- The plan (owner ruling 2026-08-07, see CORRIDORS in data.js): the
+// --- The plan (owner ruling 2026-08-07, see the pack's corridors): the
 // campaign asks for its lines back. Completion is PRESENT-state (a demolished
 // stop re-opens the corridor); planDone records that a corridor was once
 // finished, so freedom stays earned and the era panel can say "repair"
@@ -1604,13 +1718,14 @@ export function corridorBegun(g, c) {
 
 export function corridorProgress(g, c) {
   const used = usedAnchorsAll(g);
+  const li = corridorLineIdx(g, c);
   let n = 0;
-  for (let k = c.start; k < c.end; k++) if (used.has(k)) n++;
+  for (let k = 0; k < c.anchors.length; k++) if (stopDone(g, c, k, used, li)) n++;
   return n;
 }
 
 export function corridorComplete(g, c) {
-  return corridorProgress(g, c) === c.end - c.start;
+  return corridorProgress(g, c) === c.anchors.length;
 }
 
 export function updatePlanDone(g) {
@@ -1622,17 +1737,18 @@ export function updatePlanDone(g) {
     // banked balance above the cap is not clamped by being generous to).
     const grant = Math.min(c.trust || 0, Math.max(0, pkCap(g) - g.pk));
     g.pk += grant;
-    g.events.push({ type: 'plandone', id: c.id, name: c.name, geo: ANCHORS[c.end - 1].geo, trust: grant });
+    g.events.push({ type: 'plandone', id: c.id, name: c.name, geo: ANCHORS[c.anchors[c.anchors.length - 1]].geo, trust: grant });
   }
 }
 
-// Free spots unlock when the 1950 line is delivered, and stay unlocked: the
-// fence is a tutorial, not a leash, so it never comes back. Owning a free
+// Free spots unlock when the first corridor is delivered, and stay unlocked:
+// the fence is a tutorial, not a leash, so it never comes back. Owning a free
 // spot ALSO proves freedom: a pre-0.9.2 save built its stations legally under
 // the old rules and must not be re-fenced mid-game (a new player cannot have
 // one, so this grants nothing early).
+const FREE_CORRIDOR = CITY.rules.freeBuildCorridor || CORRIDORS[0].id;
 export function freeBuildUnlocked(g) {
-  if (g.planDone['green-south']) return true;
+  if (g.planDone[FREE_CORRIDOR]) return true;
   for (const L of g.lines) for (const s of L.stations) if (s.anchor === null) return true;
   return false;
 }
@@ -1642,34 +1758,66 @@ export function freeBuildUnlocked(g) {
 export function planBlockers(g) {
   const out = [];
   for (const c of CORRIDORS) {
-    if (c.opensIn > eraYear(g)) continue;
+    if (c.opensIn > g.era) continue;
     const built = corridorProgress(g, c);
-    if (built === c.end - c.start) continue;
-    out.push({ id: c.id, name: c.name, built, total: c.end - c.start, repair: !!g.planDone[c.id] });
+    if (built === c.anchors.length) continue;
+    out.push({ id: c.id, name: c.name, built, total: c.anchors.length, repair: !!g.planDone[c.id] });
   }
   return out;
 }
 
-// The next stake along a corridor: the one anchor the reveal is offering.
-export function nextStakeOf(g, c) {
-  for (let k = c.start; k < c.end; k++) {
-    if (!usedAnchorsAll(g).has(k) && anchorRevealed(g, k)) return k;
+// Every stake on the map right now, at most one per open corridor:
+// { corridor, k, anchor, prev, line, via, close }. `line` is the line that
+// continues it (live feedback 2026-08-08: "not sure which line is actively
+// building, so accidentally built wrong colour station"): the corridor's own
+// line if the player has it, else the one holding the stop before it, else
+// null. `via` marks a stop another line already built (an interchange to
+// make), `close` the ring's closing entry. Memoised on the network's shape,
+// because the renderer asks every frame.
+export function planStakes(g) {
+  const sig = g.era + '|' + g.lines.map((L) => (L.loop ? 'o' : '') + L.name0 + ':' +
+    L.stations.map((s) => s.anchor === null ? '-' : s.anchor).join(',')).join('|');
+  if (g._stakeSig === sig && g._stakes) return g._stakes;
+  const used = usedAnchorsAll(g);
+  const out = [];
+  for (const c of CORRIDORS) {
+    const li = corridorLineIdx(g, c);
+    if (c.opensIn > g.era && !corridorBegun(g, c)) continue;
+    // The railhead is the furthest stop the corridor OWNS that is built;
+    // the stake is the first undelivered stop beyond it (so a stop it passes
+    // through, already standing, is the next offer until its line calls
+    // there). With nothing beyond, the first hole anywhere: a stop removed
+    // from the middle can be won back instead of blocking the plan forever.
+    let last = -1;
+    for (let j = 0; j < c.anchors.length; j++) if (c.own[j] && used.has(c.anchors[j])) last = j;
+    let k = -1;
+    for (let j = last + 1; j < c.anchors.length && k < 0; j++) if (!stopDone(g, c, j, used, li)) k = j;
+    for (let j = 0; j < c.anchors.length && k < 0; j++) if (!stopDone(g, c, j, used, li)) k = j;
+    if (k < 0) continue;
+    const prev = k > 0 ? c.anchors[k - 1] : null;
+    let line = li;
+    if (line < 0 && prev !== null) line = g.lines.findIndex((L) => L.stations.some((s) => s.anchor === prev));
+    out.push({
+      corridor: c, k, anchor: c.anchors[k], prev, line: line >= 0 ? line : null,
+      via: !c.own[k] && used.has(c.anchors[k]),
+      close: !!c.closeLoop && k === c.anchors.length - 1,
+    });
   }
-  return null;
+  g._stakeSig = sig;
+  g._stakes = out;
+  return out;
 }
 
-// Which LINE a stake continues: the one holding the corridor's railhead
-// (live feedback 2026-08-08: "not sure which line is actively building, so
-// accidentally built wrong colour station"). Null when the corridor has not
-// begun, or the stake is a corridor's first anchor.
+// The stake a corridor is offering, as an anchor index, or null.
+export function nextStakeOf(g, c) {
+  const s = planStakes(g).find((x) => x.corridor.id === c.id);
+  return s ? s.anchor : null;
+}
+
+// Which LINE a stake continues, or null (see planStakes).
 export function stakeLine(g, anchorIdx) {
-  const c = corridorOf(anchorIdx);
-  if (!c || anchorIdx <= c.start) return null;
-  const prev = anchorIdx - 1;
-  for (let li = 0; li < g.lines.length; li++) {
-    if (g.lines[li].stations.some((s) => s.anchor === prev)) return li;
-  }
-  return null;
+  const s = planStakes(g).find((x) => x.anchor === anchorIdx);
+  return s ? s.line : null;
 }
 
 // A corridor's dashed promise is worth drawing only when it is the story the
@@ -1678,21 +1826,12 @@ export function stakeLine(g, anchorIdx) {
 // the 1952 promise it was already showing (screenshot pass, 2026-08-05).
 export function teaseVisible(g, c) {
   if (!c.tease || corridorBegun(g, c)) return false;
-  const now = eraYear(g);
-  if (now >= c.opensIn) return true;
-  const next = nextEra(g);
-  return !!next && next.year === c.opensIn;
+  return g.era >= c.opensIn || (g.era + 1 === c.opensIn && g.era + 1 < ERAS.length);
 }
 
 export function anchorRevealed(g, i) {
-  const used = usedAnchorsAll(g);
-  if (used.has(i)) return true;
-  const c = corridorOf(i);
-  if (!c) return false;
-  let maxBuilt = c.start - 1;
-  for (let k = c.start; k < c.end; k++) if (used.has(k)) maxBuilt = k;
-  if (maxBuilt < c.start) return i === c.start && eraYear(g) >= c.opensIn;
-  return i === maxBuilt + 1;
+  if (usedAnchorsAll(g).has(i)) return true;
+  return planStakes(g).some((s) => s.anchor === i);
 }
 
 // How many lines call at this anchor (2+ means interchange).
@@ -1879,7 +2018,7 @@ export function networkCache(g) {
   // entries each line holds. A demolition followed by a rebuild can restore
   // the same per-line counts while replacing a station or an interchange;
   // counts alone then resurrected the demolished edges until a later build.
-  const structRev = g.lines.map((L) => L.stations.map(physKeyOf).join('>')).join('|');
+  const structRev = g.lines.map((L) => (L.loop ? 'o' : '') + L.stations.map(physKeyOf).join('>')).join('|');
   if (g._netRev2 === structRev && g._net) {
     const vRev = netRev(g);
     if (g._netVarRev !== vRev && g.clock - g._netVarAt >= VARIANT_REFRESH_S) {
@@ -1906,13 +2045,19 @@ export function networkCache(g) {
     }
     return pk;
   });
+  // A ring's full lap, for measuring an arc that wraps past stop 0.
+  const lap = g.lines.map((L, li) => (L.loop
+    ? prefix[li][L.stations.length - 1] + kmBetween(L.stations[L.stations.length - 1].geo, L.stations[0].geo)
+    : 0));
 
   const edges = ENT.map(() => []);
   const transferCost = BAL.transferPenalty / effectMult(g, 'transfer');
   g.lines.forEach((L, li) => {
-    for (let i = 0; i + 1 < L.stations.length; i++) {
-      const a = entOf.get(li + ':' + i), b = entOf.get(li + ':' + (i + 1));
-      const d = kmBetween(L.stations[i].geo, L.stations[i + 1].geo);
+    const segs = L.loop ? L.stations.length : L.stations.length - 1;
+    for (let i = 0; i < segs; i++) {
+      const j = (i + 1) % L.stations.length;
+      const a = entOf.get(li + ':' + i), b = entOf.get(li + ':' + j);
+      const d = kmBetween(L.stations[i].geo, L.stations[j].geo);
       const t = moveTime(g, d) + 0.5;
       edges[a].push([b, t, d]);
       edges[b].push([a, t, d]);
@@ -1966,14 +2111,23 @@ export function networkCache(g) {
       if (a.li !== b.li || a.i === b.i) continue;
       let nX = 0;
       for (let p = 1; p < path.length; p++) if (ENT[path[p]].li !== ENT[path[p - 1]].li) nX++;
-      const legKm = Math.abs(prefix[a.li][b.i] - prefix[a.li][a.i]);
+      // The direction of the first leg is read off its first hop, which on
+      // a ring may wrap past stop 0; the leg's length is that arc.
+      const L1 = g.lines[a.li];
+      const n1 = L1.stations.length;
+      const dir = L1.loop ? (((ENT[path[1]].i - a.i + n1) % n1) === 1 ? 1 : -1) : (b.i > a.i ? 1 : -1);
+      let legKm = Math.abs(prefix[a.li][b.i] - prefix[a.li][a.i]);
+      if (L1.loop) {
+        const fwd = ((prefix[a.li][b.i] - prefix[a.li][a.i]) % lap[a.li] + lap[a.li]) % lap[a.li];
+        legKm = dir === 1 ? fwd : lap[a.li] - fwd;
+      }
       destMap.set(dKey, {
         km: kmAt[best],
         t: dist[best],
         nX,
         firstLeg: {
           li: a.li,
-          dir: b.i > a.i ? 1 : -1,
+          dir,
           alightI: b.i,
           legKm,
           cont: legEnd - 1 < path.length - 1,
@@ -2098,8 +2252,14 @@ export function odWeights(g, li, i) {
 // purchase, and each SET is counted for the aim that teaches the feature. ---
 export function canSetSkip(g, li, i) {
   const L = g.lines[li];
-  return !!g.owned.patterns && L.stations.length >= 5 &&
-    i > 0 && i < L.stations.length - 1;
+  if (!g.owned.patterns || L.stations.length < 5) return false;
+  if (L.loop) {
+    // No termini on a ring, so any stop may be skipped, as long as at
+    // least two still call (spec 01 §3.3).
+    const calling = L.skip.filter((x) => !x).length;
+    return i >= 0 && i < L.stations.length && (L.skip[i] || calling > 2);
+  }
+  return i > 0 && i < L.stations.length - 1;
 }
 
 export function setSkip(g, li, i, on) {
@@ -2119,7 +2279,7 @@ export function viewedDiagram(g) {
 
 // A curiosity is found by clicking it; once per save, achievement-counted.
 export function foundEgg(g, id) {
-  const egg = EGGS.find((e) => e.id === id);
+  const egg = (CITY.eggs || []).find((e) => e.id === id);
   if (!egg || g.eggs[id]) return null;
   g.eggs[id] = true;
   g.eggsFound = Object.keys(g.eggs).length;
@@ -2311,7 +2471,7 @@ function incidentTick(g) {
     g.events.push({ type: 'incident-over', geo: g.incident.geo, name: g.incident.name, resolved: false });
     g.incident = null;
   }
-  if (g.incident || !g.opened || eraYear(g) < BAL.incidentEra) return;
+  if (g.incident || !g.opened || g.era < BAL.incidentEra) return;
   if (!g.nextIncidentAt) {
     // The era just allowed failures: the first one keeps its distance.
     g.nextIncidentAt = g.clock + BAL.incidentEvery;
@@ -2398,16 +2558,28 @@ function lineWaitingTotal(g, li) {
 
 // Dispatch a specific idle train from a specific END. The run opens in a DWELL
 // phase at the origin: doors open, passengers board at the gate rate.
+// On a ring there are no ends: `end` names the DIRECTION ('head' is +1,
+// 'tail' is -1) and a parked train leaves from wherever it stands.
 export function dispatchFrom(g, li, end, ignoreReady) {
   const L = g.lines[li];
-  const idx = end === 'head' ? 0 : L.stations.length - 1;
-  const train = g.trains.find((t) =>
-    t.line === li && !t.run && !t.mothballed && t.at === idx &&
-    (ignoreReady || g.clock >= t.readyAt));
-  if (!train) return false;
-  const dir = idx === 0 ? 1 : -1;
-  const next = L.stations[idx + dir];
-  if (!next) return false;
+  let idx, dir, train;
+  if (L.loop) {
+    dir = end === 'head' ? 1 : -1;
+    train = g.trains.find((t) =>
+      t.line === li && !t.run && !t.mothballed && (ignoreReady || g.clock >= t.readyAt));
+    if (!train) return false;
+    idx = Math.min(train.at, L.stations.length - 1);
+  } else {
+    idx = end === 'head' ? 0 : L.stations.length - 1;
+    train = g.trains.find((t) =>
+      t.line === li && !t.run && !t.mothballed && t.at === idx &&
+      (ignoreReady || g.clock >= t.readyAt));
+    if (!train) return false;
+    dir = idx === 0 ? 1 : -1;
+  }
+  const nx = nextIdx(L, idx, dir);
+  const next = nx === null ? null : L.stations[nx];
+  if (!next || nx === idx) return false;
   // A patterned line alternates full and express departures, so a skipped
   // stop is served by every second train rather than stranded.
   const hasPattern = g.owned.patterns && L.skip.some(Boolean);
@@ -2433,8 +2605,10 @@ export function dispatchFrom(g, li, end, ignoreReady) {
 // turnaround wait (you are literally pushing the service out).
 export function dispatchLine(g, li) {
   const L = g.lines[li];
-  const headQ = L.waitingF[0] || 0;
-  const tailQ = L.waitingB[L.stations.length - 1] || 0;
+  // A ring sends the train the way more of the line is waiting to go.
+  const sum = (q) => q.reduce((a, b) => a + b, 0);
+  const headQ = L.loop ? sum(L.waitingF) : (L.waitingF[0] || 0);
+  const tailQ = L.loop ? sum(L.waitingB) : (L.waitingB[L.stations.length - 1] || 0);
   const first = headQ >= tailQ ? 'head' : 'tail';
   const second = first === 'head' ? 'tail' : 'head';
   return dispatchFrom(g, li, first, true) || dispatchFrom(g, li, second, true);
@@ -2470,12 +2644,15 @@ function advancePhase(g, train) {
     }
     lastPass[run.from] = g.clock;
     run.phase = 'move';
-    run.dur = moveTime(g, kmBetween(L.stations[run.from].geo, L.stations[run.from + run.dir].geo));
+    run.dur = moveTime(g, kmBetween(L.stations[run.from].geo, L.stations[nextIdx(L, run.from, run.dir)].geo));
     return;
   }
   // Arriving.
-  run.from += run.dir;
+  run.from = nextIdx(L, run.from, run.dir);
   const k = run.from;
+  // A ring's express runs alternate once per lap, at stop 0, since its
+  // trains never come back to a terminus to be re-dealt.
+  if (L.loop && k === 0 && g.owned.patterns && L.skip.some(Boolean)) run.express = !run.express;
   const off = run.dest[k] || 0;
   if (off > 0) {
     run.dest[k] = 0;
@@ -2521,8 +2698,18 @@ function advancePhase(g, train) {
       g.events.push({ type: 'transfer', geo: L.stations[k].geo, n: Math.round(cont) });
     }
   }
-  const atTerminus = k === 0 || k === L.stations.length - 1;
-  if (atTerminus) {
+  const atTerminus = !L.loop && (k === 0 || k === L.stations.length - 1);
+  if (L.loop && loopShouldRelease(g, train)) {
+    // A ring never reaches a terminus, so a train the depot or the line's
+    // target wants elsewhere is let off at the next stop instead. Its
+    // remaining riders step onto the platform, bound the same way, and
+    // ride the next train (the transfer approximation, applied here).
+    const q = run.dir === 1 ? L.waitingF : L.waitingB;
+    q[k] += Math.max(0, run.onboard);
+    train.at = k;
+    train.run = null;
+    train.readyAt = g.clock + BAL.turnaroundS;
+  } else if (atTerminus) {
     g.totalDelivered += Math.max(0, run.onboard); // numerical dust only
     L.delivered += Math.max(0, run.onboard);
     train.at = k;
@@ -2539,7 +2726,7 @@ function advancePhase(g, train) {
     // now opens its doors rather than kidnap them, which restores the very
     // invariant this comment claims.
     run.phase = 'move';
-    run.dur = moveTime(g, kmBetween(L.stations[k].geo, L.stations[k + run.dir].geo));
+    run.dur = moveTime(g, kmBetween(L.stations[k].geo, L.stations[nextIdx(L, k, run.dir)].geo));
   } else {
     const took = board(g, train, k);
     run.phase = 'dwell';
@@ -2555,7 +2742,9 @@ export function trainPos(g, train) {
   if (!run) return { from: train.at, to: train.at, f: 0 };
   if (run.phase === 'dwell') return { from: run.from, to: run.from, f: 0 };
   const L = g.lines[train.line];
-  const d = kmBetween(L.stations[run.from].geo, L.stations[run.from + run.dir].geo);
+  const to = nextIdx(L, run.from, run.dir);
+  if (to === null) return { from: run.from, to: run.from, f: 0 };
+  const d = kmBetween(L.stations[run.from].geo, L.stations[to].geo);
   const m = effectMult(g, 'speed');
   const v = BAL.maxSpeedKmS / m;
   const a = BAL.accelKmS2 / m;
@@ -2574,7 +2763,7 @@ export function trainPos(g, train) {
     else { const tr = run.dur - t; x = d - 0.5 * a * tr * tr; }
     void vPeak;
   }
-  return { from: run.from, to: run.from + run.dir, f: Math.max(0, Math.min(1, x / d)) };
+  return { from: run.from, to, f: Math.max(0, Math.min(1, x / d)) };
 }
 
 // Share of the authored regional population with quality rail access. Stations
@@ -2723,6 +2912,21 @@ export function tick(g, dt) {
     const floor = minHeadway(g);
     for (let li = 0; li < g.lines.length; li++) {
       const L = g.lines[li];
+      if (L.loop) {
+        // A ring's trains never return to be re-spaced, so the spacing they
+        // leave with is the service for good: one lap divided by the fleet
+        // (spec 01 §3.3), sent the way fewer of them are already running.
+        const active = g.trains.reduce((n, t) => n + (t.line === li && !t.mothballed ? 1 : 0), 0);
+        const target = Math.max(floor, active > 0 ? lineCycleEst(g, li) / active : floor);
+        if (g.clock - Math.max(L.lastDepart[0], L.lastDepart[1]) >= target) {
+          let f = 0, b = 0;
+          for (const t of g.trains) if (t.line === li && t.run) { if (t.run.dir === 1) f++; else b++; }
+          const first = f < b ? 'head' : b < f ? 'tail'
+            : (L.waitingF.reduce((x, y) => x + y, 0) >= L.waitingB.reduce((x, y) => x + y, 0) ? 'head' : 'tail');
+          if (!dispatchFrom(g, li, first, false)) dispatchFrom(g, li, first === 'head' ? 'tail' : 'head', false);
+        }
+        continue;
+      }
       let target = floor;
       if (g.owned.timetable) {
         const active = g.trains.reduce((n, t) => n + (t.line === li && !t.mothballed ? 1 : 0), 0);
@@ -2831,7 +3035,7 @@ export function advanceEra(g) {
   const e = nextEra(g);
   g.pk -= e.pk;
   g.era += 1;
-  g.events.push({ type: 'era', year: e.year });
+  g.events.push({ type: 'era', year: e.year, key: e.key });
   return true;
 }
 
@@ -2902,6 +3106,7 @@ export function junctionPreview(g, li, geo) {
 }
 
 export function extensionCost(g, li, end, geo, anchorIdx = null) {
+  if (anchorIdx !== null && canCloseLoopAt(g, li, end, anchorIdx)) return loopCloseCost(g, li);
   const from = endStation(g, li, end);
   const km = kmBetween(from.geo, geo);
   const share = shareFor(g, li, geo, anchorIdx);
@@ -2929,15 +3134,36 @@ export function maxStationsNow(g) {
 // anchorIdx distinguishes a stake from a free spot: null is a free spot, and
 // free spots are refused until the 1950 plan is delivered ('plan'). Checked
 // after water and spacing, so the label always names the harder refusal.
+// A plan stop this line is meant to pass THROUGH (spec 01 §3.2): the city
+// fits the interchange itself, so the junction's tier rule is waived and
+// extendTo raises the shared station to tier 2 for free, the same courtesy
+// a charter's seed gets (spec 01 §3.5).
+function planViaFor(g, li, anchorIdx) {
+  if (anchorIdx === null) return false;
+  return planStakes(g).some((s) => s.via && s.anchor === anchorIdx && s.line === li);
+}
+
+// Ground the city will not let a station stand on (名古屋城, 熱田神宮...).
+// Returns the ring's label, or null.
+export function nobuildAt(geo) {
+  for (const n of NOBUILD) if (inRing(geo, n.ring)) return n.label;
+  return null;
+}
+
 export function placementProblem(g, li, end, geo, anchorIdx = null) {
+  if (g.lines[li] && g.lines[li].loop) return 'loop';
+  if (anchorIdx !== null && canCloseLoopAt(g, li, end, anchorIdx)) {
+    return g.money < loopCloseCost(g, li) ? 'money' : null;
+  }
   const share = shareFor(g, li, geo, anchorIdx);
   if (share && share !== 'own') {
     // A junction adds no station on the ground and sits on dry land already.
-    if (share.st.tier < 2) return 'needsTier2';
+    if (share.st.tier < 2 && !planViaFor(g, li, anchorIdx)) return 'needsTier2';
   } else {
     if (stationCount(g) >= maxStationsNow(g)) return 'max';
     for (const w of WATER) if (inRing(geo, w.ring)) return 'water';
-    if (kmBetween(geo, ANCHORS[0].geo) > buildRadiusNow(g)) return 'far';
+    if (nobuildAt(geo)) return 'nobuild';
+    if (kmBetween(geo, BUILD_CENTER) > buildRadiusNow(g)) return 'far';
     if (share === 'own') return 'tooClose';
     if (anchorIdx === null && !freeBuildUnlocked(g)) return 'plan';
   }
@@ -3018,7 +3244,7 @@ export function canUpgradeStation(g, li, i, kind) {
   const cost = upgradeCost(g, li, i, kind);
   if (kind === 'tier') {
     if (st.tier >= 3) return false;
-    if (st.tier === 2 && eraYear(g) < BAL.tier3Era) return false;
+    if (st.tier === 2 && g.era < BAL.tier3Era) return false;
   } else if (levelOf(g, li, i, kind) >= upgCapFor(g, st)) {
     return false;
   }
@@ -3045,10 +3271,14 @@ export function upgradeStation(g, li, i, kind) {
   return true;
 }
 
-const NUMERALS = ['', ' II', ' III', ' IV', ' V', ' VI', ' VII', ' VIII', ' IX', ' X'];
+// Free spots take the district's name plus a counter: roman numerals in
+// Stockholm, 「中区 2」 in a Japanese city (spec 01 §3.8).
+const NUMERALS = (CITY.naming && CITY.naming.freeSpotSuffix) ||
+  ['', ' II', ' III', ' IV', ' V', ' VI', ' VII', ' VIII', ' IX', ' X'];
+const FREE_BASE = (CITY.naming && CITY.naming.freeSpotBase) || 'Station';
 
 export function freeSpotName(g, geo) {
-  const base = densityAt(geo).district || 'Station';
+  const base = densityAt(geo).district || FREE_BASE;
   let taken = 0;
   for (const L of g.lines) {
     taken += L.stations.filter((s) => s.name === base || s.name.startsWith(base + ' ')).length;
@@ -3099,9 +3329,14 @@ export function renameLine(g, li, name) {
 // up my green line"): historically it IS the green line's west arm, so it
 // may be recoloured, and it alone may wear Gröna linjen's green, shared
 // stroke and all.
-const HISTORIC_NAME0 = new Set([
-  'Gröna linjen', 'Röda linjen', 'Blå linjen',
-]);
+const HISTORIC_NAME0 = new Set(CITY.lines.historic);
+// The one line that may break the colour rules, if the pack names one
+// (Stockholm's west arm); it may wear the family colour and take its own
+// reserved colour back.
+const RECOLOR_EX = CITY.lines.recolorException || null;
+function isRecolorException(L) {
+  return !!RECOLOR_EX && !!L && L.name0 === RECOLOR_EX.name0;
+}
 
 export function canRecolorLine(g, li) {
   const L = g.lines[li];
@@ -3120,13 +3355,14 @@ export function recolorChoices(g, li) {
   // The west arm's special pair leads: the family green it historically
   // belongs to, and its own promised mint when it wants the charter look
   // back. Neither is offered to any other line.
-  if (L && L.name0 === 'Västerortsbanan') {
+  if (isRecolorException(L)) {
     if (L.color !== LINE_COLORS[0]) out.push(LINE_COLORS[0]);
-    if (L.color !== LINE_IDENTITY.westline.color) out.push(LINE_IDENTITY.westline.color);
+    const own = LINE_IDENTITY[RECOLOR_EX.project].color;
+    if (L.color !== own) out.push(own);
   }
   for (let i = 0; out.length < 10 && i < 60; i++) {
     const c = lineColor(i);
-    if (RESERVED.has(c) || c === LINE_COLORS[0] || taken.has(c)) continue;
+    if (RESERVED.has(c.toLowerCase()) || c === LINE_COLORS[0] || taken.has(c)) continue;
     out.push(c);
   }
   return out;
@@ -3138,12 +3374,13 @@ export function recolorLine(g, li, color) {
   const c = color.toLowerCase();
   const L = g.lines[li];
   if (L.color.toLowerCase() === c) return false;
-  const westArm = L.name0 === 'Västerortsbanan';
-  // Only the west arm may share the family green, and only a charter may
+  const westArm = isRecolorException(L);
+  // Only the exception may share the family colour, and only a charter may
   // take its own promised colour back out of the reserved set.
-  if (c === LINE_COLORS[0] && !westArm) return false;
-  if (RESERVED.has(c) && !(westArm && c === LINE_IDENTITY.westline.color)) return false;
-  if (c !== LINE_COLORS[0]) {
+  const first = LINE_COLORS[0].toLowerCase();
+  if (c === first && !westArm) return false;
+  if (RESERVED.has(c) && !(westArm && c === LINE_IDENTITY[RECOLOR_EX.project].color.toLowerCase())) return false;
+  if (c !== first) {
     for (let k = 0; k < g.lines.length; k++) {
       if (k !== li && g.lines[k].color.toLowerCase() === c) return false;
     }
@@ -3157,7 +3394,7 @@ export function recolorLine(g, li, color) {
 // so a restore never numbers a station against itself.
 export function givenStationName(g, li, i) {
   const st = g.lines[li].stations[i];
-  const base = densityAt(st.geo).district || 'Station';
+  const base = densityAt(st.geo).district || FREE_BASE;
   const self = physKeyOf(st);
   let taken = 0;
   for (const L of g.lines) {
@@ -3168,13 +3405,16 @@ export function givenStationName(g, li, i) {
 }
 
 export function givenLineName(g, li) {
-  return g.lines[li].name0 || (li === 0 ? 'Gröna linjen' : 'Linje ' + (li + 1));
+  return g.lines[li].name0 || (li === 0 ? FIRST_NAME : foundedName(FOUNDED_FROM + li - 1));
 }
 
 // anchorIdx is null for a free spot. An anchor already on THIS line is refused;
 // landing on another line's tier-2+ station shares it (a junction, see
 // shareTarget). Returns true on success.
 export function extendTo(g, li, end, geo, anchorIdx) {
+  // Dropping an end on the line's OTHER end closes the ring (spec 01 §3.3).
+  if (anchorIdx !== null && canCloseLoopAt(g, li, end, anchorIdx)) return closeLoop(g, li);
+  if (g.lines[li] && g.lines[li].loop) return false;
   if (anchorIdx !== null && usedAnchorsOnLine(g, li).has(anchorIdx)) return false;
   if (anchorIdx !== null && !anchorRevealed(g, anchorIdx)) return false;
   if (placementProblem(g, li, end, geo, anchorIdx)) return false;
@@ -3186,6 +3426,13 @@ export function extendTo(g, li, end, geo, anchorIdx) {
     // new entry starts in lockstep with its physical twin (upgradeStation
     // keeps them there via entriesOfSame; a fresh tier-1 entry here would
     // desync dwell, gates and upkeep from what the player actually built).
+    if (share.st.tier < 2 && planViaFor(g, li, anchorIdx)) {
+      // The plan's interchange: the city raises the platform to a Station.
+      for (const [l2, i2] of entriesOfSame(g, share.li, share.i)) {
+        g.lines[l2].stations[i2].tier = 2;
+      }
+      g._fracRev = -1;
+    }
     station = cloneStationEntry(share.st);
     g.events.push({ type: 'junction', geo: station.geo, name: station.name });
   } else if (anchorIdx !== null) {
@@ -3245,18 +3492,116 @@ export function extendTo(g, li, end, geo, anchorIdx) {
   return true;
 }
 
+// --- Rings (spec 01 §3.3, 名城線). A line closes when an end is dropped on
+// its own OTHER end: four stops at least, the pack must allow loops, and
+// the far end must be a real station on the ground (an anchor). A ring has
+// no termini: trains circle in both directions, riders always ride the
+// shorter arc, and the station order is untouched, with the closing segment
+// running from the last stop back to the first. ---
+
+// The stop after k in direction dir: wraps on a ring, null off a line's end.
+export function nextIdx(L, k, dir) {
+  const n = L.stations.length;
+  const j = k + dir;
+  if (L.loop) return (j + n) % n;
+  return j >= 0 && j < n ? j : null;
+}
+
+// The anchors nothing in the plan can rebuild: born hubs, and opening
+// stations no corridor owns. (Stockholm's opening stops belong to its first
+// corridor and can be rebuilt; 名古屋・伏見・栄 belong to none.)
+const PROTECTED = new Set([
+  ...ANCHORS.map((a, i) => (a.hub ? i : -1)).filter((i) => i >= 0),
+  ...START_BUILT.filter((i) => !corridorOf(i)),
+]);
+function isProtected(st) {
+  return st.anchor !== null && PROTECTED.has(st.anchor);
+}
+
+export function canCloseLoopAt(g, li, end, anchorIdx) {
+  const L = g.lines[li];
+  if (!CITY.rules.loops || !L || L.loop || L.stations.length < 4) return false;
+  const other = end === 'head' ? L.stations[L.stations.length - 1] : L.stations[0];
+  return anchorIdx !== null && other.anchor === anchorIdx;
+}
+
+// Track only: the far station already stands.
+export function loopCloseCost(g, li) {
+  const L = g.lines[li];
+  const a = L.stations[L.stations.length - 1].geo, b = L.stations[0].geo;
+  return Math.round(kmBetween(a, b) * BAL.trackPerKm *
+    (crossesWater(a, b) ? BAL.waterMult * effectMult(g, 'waterCost') : 1));
+}
+
+export function closeLoop(g, li) {
+  const L = g.lines[li];
+  if (!CITY.rules.loops || !L || L.loop || L.stations.length < 4) return false;
+  const cost = loopCloseCost(g, li);
+  if (g.money < cost) return false;
+  g.money -= cost;
+  L.loop = true;
+  // The ends were termini, so they never skipped; on a ring they may.
+  L.rev += 1;
+  g._netRev2 = undefined;
+  computeDemand(g);
+  updatePlanDone(g);
+  if (dayPhase(g) === 3) g.nightBuilds += 1;
+  g.events.push({ type: 'loop', geo: L.stations[0].geo, name: L.name });
+  return true;
+}
+
+// Which way is "clockwise" on the map for dir +1: the sign of the ring's
+// area in lon/lat (north up). 名城線's 右回り is clockwise.
+export function loopClockwise(L) {
+  let a = 0;
+  const P = L.stations;
+  for (let i = 0; i < P.length; i++) {
+    const p = P[i].geo, q = P[(i + 1) % P.length].geo;
+    a += p[1] * q[0] - q[1] * p[0];
+  }
+  return a < 0;
+}
+
+// Rotate a ring's index space so stop `by` becomes stop 0. Every per-stop
+// array and every index that points into the line moves together (the
+// original game's hardest-won rule: a field missed here is a desync).
+function rotateLine(g, li, by) {
+  const L = g.lines[li];
+  const n = L.stations.length;
+  const k = ((by % n) + n) % n;
+  if (!k) return;
+  const rot = (arr) => arr.slice(k).concat(arr.slice(0, k));
+  const map = (i) => (i - k + n) % n;
+  for (const f of ['stations', 'waitingF', 'waitingB', 'left60', 'leaveAcc', 'lastPassF', 'lastPassB', 'skip']) {
+    L[f] = rot(L[f]);
+  }
+  for (const t of g.trains) {
+    if (t.line !== li) continue;
+    t.at = map(t.at);
+    if (t.run) {
+      t.run.from = map(t.run.from);
+      t.run.dest = rot(t.run.dest);
+      t.run.destCont = rot(t.run.destCont);
+    }
+  }
+  if (g.surge && g.surge.line === li) g.surge.idx = map(g.surge.idx);
+  L.rev += 1;
+}
+
 export function canDemolish(g, li, end) {
   const L = g.lines[li];
   if (!L) return false;
   // A short line stays demolishable: taking the second to last stop takes
   // the LINE with it (live report 2026-08-10, a stub line squatted on its
   // hub with no way to remove it). Only the network's last line is safe.
+  if (L.loop) return false; // a ring has no end to take down; remove a stop to open it
   if (L.stations.length <= 2 && g.lines.length <= 1) return false;
   if (g.money < BAL.demolishCost) return false;
   const idx = end === 'head' ? 0 : L.stations.length - 1;
-  // T-Centralen is the campaign's permanent anchor. It cannot be rebuilt by
-  // the plan, so removing it turns a valid save into a dead city.
-  if (L.stations[idx].anchor === 0) return false;
+  // The campaign's permanent anchors (T-Centralen, 名古屋): nothing in the
+  // plan can rebuild them, so removing one turns a valid save into a dead
+  // city.
+  if (isProtected(L.stations[idx])) return false;
   // Only a train IN MOTION at or toward the doomed station blocks demolition
   // (its run references the geometry). A parked idle train never does: trains
   // rest at exactly the ends a player may demolish, so refusing on idle
@@ -3379,7 +3724,7 @@ export function demolish(g, li, end) {
 
 export function insertMidGeo(g, li, seg) {
   const L = g.lines[li];
-  const a = L.stations[seg].geo, b = L.stations[seg + 1].geo;
+  const a = L.stations[seg].geo, b = L.stations[(seg + 1) % L.stations.length].geo;
   return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
 }
 
@@ -3393,10 +3738,12 @@ export function insertCost(g, li) {
 // same unlock free spots do.
 export function insertProblem(g, li, seg) {
   const L = g.lines[li];
-  if (!L || !Number.isInteger(seg) || seg < 0 || seg >= L.stations.length - 1) return 'seg';
+  // A ring has one more segment than a line: the closing one, last to first.
+  if (!L || !Number.isInteger(seg) || seg < 0 || seg >= L.stations.length - (L.loop ? 0 : 1)) return 'seg';
   const geo = insertMidGeo(g, li, seg);
   if (stationCount(g) >= maxStationsNow(g)) return 'max';
   for (const w of WATER) if (inRing(geo, w.ring)) return 'water';
+  if (nobuildAt(geo)) return 'nobuild';
   // Both neighbours by construction, and anything another line has built.
   for (const L2 of g.lines) {
     for (const st of L2.stations) if (kmBetween(st.geo, geo) < BAL.minSpacingKm) return 'tooClose';
@@ -3409,23 +3756,34 @@ export function insertProblem(g, li, seg) {
 // The inverse splice (owner ask, 2026-08-09: stations built between lines
 // by accident need a way out). Interior stops only: the ends already have
 // right-click demolish.
+// On a ring every stop is interior, so any of them may go, and taking one
+// out OPENS the ring at that point (spec 01 §3.3).
 export function canRemoveStation(g, li, i) {
   const L = g.lines[li];
-  if (!L || !Number.isInteger(i) || i <= 0 || i >= L.stations.length - 1) return false;
+  if (!L || !Number.isInteger(i) || i < 0 || i >= L.stations.length) return false;
+  if (!L.loop && (i <= 0 || i >= L.stations.length - 1)) return false;
   if (L.stations.length <= 2) return false;
   if (g.money < BAL.demolishCost) return false;
-  if (L.stations[i].anchor === 0) return false;
+  if (isProtected(L.stations[i])) return false;
   // Same rule as canDemolish: only a train moving at or toward the doomed
   // stop blocks it (its run references the geometry).
   for (const t of g.trains) {
     if (t.line !== li || !t.run) continue;
-    if (t.run.from === i || t.run.from + t.run.dir === i) return false;
+    if (t.run.from === i || nextIdx(L, t.run.from, t.run.dir) === i) return false;
   }
   return true;
 }
 
 export function removeStation(g, li, i) {
   if (!canRemoveStation(g, li, i)) return false;
+  const L0 = g.lines[li];
+  if (L0.loop) {
+    // Rotate so the doomed stop is the tail, open the ring, and the tail
+    // removal below is the ordinary interior splice at the last index.
+    rotateLine(g, li, i + 1);
+    L0.loop = false;
+    return demolish(g, li, 'tail');
+  }
   g.money -= BAL.demolishCost;
   const L = g.lines[li];
   const st = L.stations[i];
@@ -3488,6 +3846,8 @@ export function insertStation(g, li, seg) {
     // Index bookkeeping, then geometry sorts itself: a train mid-hop across
     // the spliced segment keeps its `from` and simply arrives at the new
     // stop first, because advancePhase reads from + dir against the arrays.
+    // (On a ring's closing segment k is the new last index, and both
+    // directions across it wrap onto the new stop the same way.)
     if (t.run.from >= k) t.run.from += 1;
     t.run.dest.splice(k, 0, 0);
     t.run.destCont.splice(k, 0, 0);
@@ -3505,7 +3865,7 @@ export function maxFor(g, item) {
 }
 
 export function eraVisible(g, item) {
-  return item.era <= eraYear(g);
+  return item.era <= g.era;
 }
 
 // The unlock grammar (0.11, owner direction: the shop should react to how
@@ -3533,7 +3893,7 @@ export function unlockMet(g, item) {
   if (u.coverage && coverage(g) < u.coverage) return false;
   if (u.corridor && !g.planDone[u.corridor]) return false;
   if (u.hubs && playerHubs(g) < u.hubs) return false;
-  if (u.anchor !== undefined && !usedAnchorsAll(g).has(u.anchor)) return false;
+  if (u.anchorId !== undefined && !usedAnchorsAll(g).has(anchorIndex(u.anchorId))) return false;
   if (u.retail && commerceRate(g) < u.retail) return false;
   if (u.achievement && !g.achieved[u.achievement]) return false;
   return true;
@@ -3731,24 +4091,28 @@ export function buy(g, id) {
     // Slussen FOREVER, there being no mid-line insertion; the orphan keeps
     // the historical threaded route open, and lines opening as disconnected
     // stubs is itself historical).
-    const [a, b] = PROJECT_SEEDS[id]();
+    const [a, b] = PROJECT_SEEDS[id];
+    // A seed on a station already built shares it, and the city brings a
+    // bare stop up to a Station on the way, so the charter's own
+    // interchange never trips the tier rule it would otherwise need
+    // (spec 01 §3.5).
+    for (const i of [a, b]) {
+      for (let l2 = 0; l2 < g.lines.length; l2++) {
+        g.lines[l2].stations.forEach((st) => {
+          if (st.anchor === i && st.tier < 2) { st.tier = 2; st.hub = false; g._fracRev = -1; }
+        });
+      }
+    }
     g.lines.push(newLine([stationForAnchor(g, a), stationForAnchor(g, b)], g.lines.length, LINE_IDENTITY[id]));
     addTrain(g, g.lines.length - 1);
     computeDemand(g);
-    g.events.push({ type: 'newline', geo: ANCHORS[b].geo, name: ANCHORS[b].name });
+    g.events.push({ type: 'newline', geo: ANCHORS[b].geo, name: ANCHORS[b].name, project: id });
   }
   return true;
 }
 
-// What each charter seeds: [from, to] anchor indices.
-const PROJECT_SEEDS = {
-  westline: () => [0, CORRIDORS.find((c) => c.id === 'green-west').start],
-  redline:  () => {
-    const c = CORRIDORS.find((x) => x.id === 'red-south');
-    return [c.start, c.start + 1];
-  },
-  blueline: () => [0, CORRIDORS.find((c) => c.id === 'blue-main').start],
-};
+// What each charter seeds: [from, to] anchor indices, from the pack.
+const PROJECT_SEEDS = Object.fromEntries((CITY.projects || []).map((p) => [p.id, p.seed.map(anchorIndex)]));
 
 // Tier downgrade (report 638 §4): agency over upkeep. No refund, the map stays
 // intact, and a born Knutpunkt (T-Centralen) never falls below its rank.
@@ -3983,6 +4347,7 @@ export function trainView(g, id) {
     linePatterned: !!g.owned.patterns && L.skip.some(Boolean),
     at: null,
     towards: null,
+    loopDir: null,
     nextStop: null,
     stackIndex: 0,
     stackSize: 0,
@@ -4003,19 +4368,29 @@ export function trainView(g, id) {
     v.band = loadBand(v.loadFrac);
     v.express = !!r.express;
     v.at = L.stations[r.from] ? L.stations[r.from].name : null;
-    const endIdx = r.dir === 1 ? L.stations.length - 1 : 0;
-    v.towards = L.stations[endIdx] ? L.stations[endIdx].name : null;
+    if (L.loop) {
+      // A ring has no far end to be bound for: 右回り or 左回り instead.
+      v.loopDir = (r.dir === 1) === loopClockwise(L) ? 'cw' : 'ccw';
+    } else {
+      const endIdx = r.dir === 1 ? L.stations.length - 1 : 0;
+      v.towards = L.stations[endIdx] ? L.stations[endIdx].name : null;
+    }
+    // The stops ahead, in the direction of travel: once round a ring, to
+    // the end of a line.
+    const aheadIdx = [];
+    for (let k = nextIdx(L, r.from, r.dir); k !== null && k !== r.from && aheadIdx.length < L.stations.length;
+      k = nextIdx(L, k, r.dir)) aheadIdx.push(k);
     // The next stop it will actually CALL at, which on an express run is not
     // simply the next station along.
-    for (let k = r.from + r.dir; k >= 0 && k < L.stations.length; k += r.dir) {
-      const skipped = r.express && L.skip[k] && k > 0 && k < L.stations.length - 1;
+    for (const k of aheadIdx) {
+      const skipped = r.express && L.skip[k] && (L.loop || (k > 0 && k < L.stations.length - 1));
       if (!skipped) { v.nextStop = L.stations[k].name; break; }
     }
     // Who is aboard and where they get off: the stops ahead in the
     // direction of travel, each with the riders leaving there and how many
     // of those are changing lines.
     const ahead = [];
-    for (let k = r.from + r.dir; k >= 0 && k < L.stations.length; k += r.dir) {
+    for (const k of aheadIdx) {
       const off = r.dest[k] || 0;
       const change = r.destCont[k] || 0;
       if (off > 0.5 || change > 0.5) {
@@ -4141,6 +4516,27 @@ export function cancelMove(g, li) {
 // overdrawing the player. One move per tick keeps a big retarget from
 // emptying the wallet in a frame, and nothing moves at all while every
 // line has no opinion, which is the default.
+// Should this ring train get off at the stop it just reached? Only when
+// something is actually waiting to take it, so a released train is never
+// sent straight back out by the drivers (each release puts its riders back
+// on the platform, which must not become a loop of its own).
+function loopShouldRelease(g, t) {
+  const li = t.line;
+  if (g.moveQueue.some((m) => m.train === t.id)) return true;
+  const parked = g.trains.filter((x) => x.line === li && !x.run && !x.mothballed).length;
+  const orders = g.moveQueue.filter((m) => m.from === li && m.train === undefined).length;
+  if (orders > parked) return true;
+  const tgt = lineTarget(g, li);
+  if (tgt === null || g.money < BAL.moveTrainKr) return false;
+  if (g.trains.filter((x) => x.line === li).length - tgt - parked <= 0) return false;
+  for (let l2 = 0; l2 < g.lines.length; l2++) {
+    if (l2 === li || !canRunService(g.lines[l2])) continue;
+    const queued = g.moveQueue.filter((m) => m.to === l2).length;
+    if (shortfall(g, l2) - queued > 0 || (lineTarget(g, l2) || 0) > 0) return true;
+  }
+  return false;
+}
+
 function balanceToTargets(g) {
   if (g.money < BAL.moveTrainKr) return;
   if (!g.lines.some((L) => Number.isInteger(L.target))) return;
@@ -4244,11 +4640,15 @@ export function simulateOffline(g, seconds) {
 
 // --- Save / load (saveVersion is monotonic; forward-only migrations) ---
 
-export const SAVE_KEY = 'tunnelbana_save';
+// Every city keeps its own saves (spec 01 §3.9): the key and the whole
+// localStorage family are prefixed with the pack id.
+export const STORE_PREFIX = 'metros_' + CITY.id + '_';
+export const SAVE_KEY = STORE_PREFIX + 'save';
 
 // Shown in the menu and stamped on feedback, so a bug report always says which
-// build it came from. Bump on anything a player would notice.
-export const VERSION = '0.16.1';
+// build it came from. Bump on anything a player would notice. Restarted at
+// 1.0.0 for Japan Metros (spec 01 §3.9); the inherited history is 0.16.1.
+export const VERSION = '1.0.0';
 
 // --- The save container (0.11.3): TBSAVE1:<crc32 hex>:<json>. The checksum
 // makes corruption DETECTABLE (a truncated write no longer looks like a
@@ -4284,7 +4684,8 @@ export function unpack(raw) {
 
 export function serialize(g) {
   return JSON.stringify({
-    saveVersion: 8,
+    saveVersion: 9,
+    city: CITY.id,
     savedAt: Date.now(),
     money: Math.round(g.money),
     pk: Math.round(g.pk * 100) / 100,
@@ -4304,6 +4705,7 @@ export function serialize(g) {
       earned: Math.round(L.earned || 0),
       skip: L.skip.map((s) => (s ? 1 : 0)),
       target: Number.isInteger(L.target) ? L.target : null,
+      loop: !!L.loop,
     })),
     hist: g.hist,
     records: g.records,
@@ -4337,11 +4739,14 @@ export function serialize(g) {
   });
 }
 
+const SAVE_BOUNDS = CITY.map.saveBounds;
+
 function validStation(st) {
   return !!st && typeof st.name === 'string' && st.name.length > 0 && st.name.length <= 40 &&
     Array.isArray(st.geo) && st.geo.length === 2 &&
     Number.isFinite(st.geo[0]) && Number.isFinite(st.geo[1]) &&
-    st.geo[0] > 59.0 && st.geo[0] < 59.6 && st.geo[1] > 17.5 && st.geo[1] < 18.6 &&
+    st.geo[0] > SAVE_BOUNDS.latMin && st.geo[0] < SAVE_BOUNDS.latMax &&
+    st.geo[1] > SAVE_BOUNDS.lonMin && st.geo[1] < SAVE_BOUNDS.lonMax &&
     (st.anchor === null || (Number.isInteger(st.anchor) && st.anchor >= 0 && st.anchor < ANCHORS.length));
 }
 
@@ -4394,6 +4799,16 @@ export function hydrate(raw) {
   let s;
   try { s = JSON.parse(json); } catch { g.hydrateFallback = true; return g; }
   if (!s || typeof s.saveVersion !== 'number') { g.hydrateFallback = true; return g; }
+  // Another city's save is never read as this one's (spec 01 §3.9). A save
+  // with no city field was written by the original game, which only ever
+  // knew Stockholm. The bytes stay untouched: the caller's fuse sees the
+  // fallback flag and stops autosave.
+  const savedCity = typeof s.city === 'string' ? s.city : 'stockholm';
+  if (savedCity !== CITY.id) {
+    g.hydrateFallback = true;
+    g.hydrateWrongCity = savedCity;
+    return g;
+  }
   g.money = Math.max(0, Number(s.money) || 0);
   g.pk = Math.max(0, Number(s.pk) || 0);
   g.era = posInt(s.era, ERAS.length - 1);
@@ -4402,7 +4817,7 @@ export function hydrate(raw) {
   // or partial array falls back per entry to that same promise.
   g.eraGoals = ERAS.map((e, i) => {
     const v = Array.isArray(s.eraGoals) ? Number(s.eraGoals[i]) : NaN;
-    return Number.isFinite(v) && v >= 0 && v <= 1e9 ? Math.floor(v) : ERA_GOALS_PRE_014[i];
+    return Number.isFinite(v) && v >= 0 && v <= 1e9 ? Math.floor(v) : ERA_GOALS_LEGACY[i];
   });
   g.endingSeen = !!s.endingSeen;
   // Saves from before opening day existed: any delivery proves the ribbon cut.
@@ -4438,7 +4853,7 @@ export function hydrate(raw) {
   }
   g.eggs = {};
   if (s.eggs && typeof s.eggs === 'object') {
-    for (const e of EGGS) if (s.eggs[e.id]) g.eggs[e.id] = true;
+    for (const e of CITY.eggs || []) if (s.eggs[e.id]) g.eggs[e.id] = true;
   }
   g.eggsFound = Object.keys(g.eggs).length;
   g.council = {};
@@ -4520,13 +4935,13 @@ export function hydrate(raw) {
       // Pre-identity saves fall back to the palette by founding order. The
       // 40-char clamp matches validStation (a save is hostile input).
       name: typeof L.name === 'string' && L.name.length
-        ? L.name.slice(0, 40) : (idx === 0 ? 'Gröna linjen' : 'Linje ' + (idx + 1)),
+        ? L.name.slice(0, 40) : (idx === 0 ? FIRST_NAME : foundedName(FOUNDED_FROM + idx - 1)),
       // Pre-rename saves carry no name0; nothing was renamed, so the name
       // they arrive with IS the given name.
       name0: typeof L.name0 === 'string' && L.name0.length
         ? L.name0.slice(0, 40)
         : (typeof L.name === 'string' && L.name.length ? L.name.slice(0, 40)
-          : (idx === 0 ? 'Gröna linjen' : 'Linje ' + (idx + 1))),
+          : (idx === 0 ? FIRST_NAME : foundedName(FOUNDED_FROM + idx - 1))),
       color: /^#[0-9a-f]{6}$/i.test(L.color || '') ? L.color : lineColor(idx),
       delivered: posInt(L.delivered, 1e12),
       earned: posInt(L.earned, 1e15),
@@ -4540,6 +4955,9 @@ export function hydrate(raw) {
       left60: [],
       leaveAcc: [],
       lastDepart: [-Infinity, -Infinity],
+      // A ring needs four stops and a pack that allows them; anything else
+      // claiming to be one loads as a line.
+      loop: !!L.loop && !!CITY.rules.loops && L.stations.length >= 4,
       rev: 0,
     }));
     computeDemand(g); // multipliers derive from the network, never the save
@@ -4547,7 +4965,7 @@ export function hydrate(raw) {
       const src = s.lines[g.lines.indexOf(L)];
       // The pattern: aligned to stations, termini forced to call.
       L.skip = L.stations.map((_, i) =>
-        i > 0 && i < L.stations.length - 1 && !!(Array.isArray(src.skip) && src.skip[i]));
+        (L.loop || (i > 0 && i < L.stations.length - 1)) && !!(Array.isArray(src.skip) && src.skip[i]));
       L.waitingF = L.stations.map((st, i) => readQueue(src.waitingF, i, st, 0.5));
       L.waitingB = L.stations.map((st, i) => readQueue(src.waitingB, i, st, 0.5));
       L.left60 = L.stations.map(() => 0);

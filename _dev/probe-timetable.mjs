@@ -3,7 +3,9 @@
 // spread between consecutive departures, spawn lost to full platforms,
 // abandonment, gross fares. Run: node _dev/probe-timetable.mjs
 import * as sim from '../src/sim.js';
-import { ANCHORS, WEST_FIRST } from '../src/data.js';
+const { ANCHORS } = sim;
+// The opening line runs to the end of the pack's first corridor.
+const WEST_FIRST = sim.CORRIDORS[0].anchors.length + sim.newGame().lines[0].stations.length - (sim.CITY.id === 'stockholm' ? 3 : 0);
 
 function build(owned) {
   const g = sim.newGame();

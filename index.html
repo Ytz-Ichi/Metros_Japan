@@ -1,48 +1,32 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="ja" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tunnelbana · Build Stockholm</title>
-<meta name="description" content="Tunnelbana is a calm, finite Stockholm metro building game. Build lines from T-Centralen, connect interchanges, run trains, and grow the city from 1950 onward.">
-<!-- Share surfaces. The page shipped with none, so every link posted to a
-     forum or chat rendered as a bare URL and Ahrefs flagged the page as having
-     no Open Graph at all (2026-09-06). og.jpg is a real mid-campaign board from
-     _dev/shoot-store.mjs, resized to 1200x675, not hand-composed art.
-     The canonical is the apex domain with the trailing slash: /tunnelbana 308s
-     to /tunnelbana/, and www 301s to the apex. -->
-<link rel="canonical" href="https://maclaine.se/tunnelbana/">
+<title>Japan Metros · 名古屋</title>
+<meta name="description" content="Japan Metros は名古屋の地下鉄を育てる、終わりのある放置ゲーム。1957 年の東山線 3 駅から始め、名城線を輪にし、六路線の網を地図の上に灯していく。">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="MacLaine">
-<meta property="og:url" content="https://maclaine.se/tunnelbana/">
-<meta property="og:title" content="Tunnelbana · Build Stockholm">
-<meta property="og:description" content="A calm, finite Stockholm metro building game. Start with three stations, connect T-Centralen, run trains, and grow the city from 1950 onward.">
-<meta property="og:image" content="https://maclaine.se/tunnelbana/og.jpg">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="675">
-<meta property="og:image:alt" content="The Tunnelbana map mid-campaign: four coloured lines across Stockholm, 53 stations, trains running.">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Tunnelbana · Build Stockholm">
-<meta name="twitter:description" content="A calm, finite Stockholm metro building game. Start with three stations, connect T-Centralen, run trains, and grow the city from 1950 onward.">
-<meta name="twitter:image" content="https://maclaine.se/tunnelbana/og.jpg">
+<meta property="og:title" content="Japan Metros · 名古屋">
+<meta property="og:description" content="名古屋の地下鉄を 1957 年の 3 駅から育てる、終わりのある放置ゲーム。">
+<meta name="twitter:card" content="summary">
 <!-- The version this PAGE was built for. main.js compares it against its own
      and reloads once if they differ, so a cached script can never pair with a
      newer page (that shipped a dead Achievements screen and a 0.7 readout on a
      0.8 page). The handshake lives in the HTML because the HTML is the copy a
      browser revalidates. -->
-<meta name="tb-version" content="0.16.1">
+<meta name="tb-version" content="1.0.0">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link href="vendor/maplibre-gl.css" rel="stylesheet">
 <script src="vendor/maplibre-gl.js"></script>
 <!-- The design system, in adoption order (pass 02, section 08): colour and
      glyph tokens, then the interface tokens, then the component layer. Every
      class in the markup below comes from ui.css; this file owns only layout. -->
-<link rel="stylesheet" href="tokens.css?v=0.16.1">
-<link rel="stylesheet" href="tokens-ui.css?v=0.16.1">
-<link rel="stylesheet" href="ui.css?v=0.16.1">
-<link rel="stylesheet" href="ui-moments.css?v=0.16.1">
-<link rel="stylesheet" href="ui-council.css?v=0.16.1">
-<link rel="stylesheet" href="ui-train.css?v=0.16.1">
+<link rel="stylesheet" href="tokens.css?v=1.0.0">
+<link rel="stylesheet" href="tokens-ui.css?v=1.0.0">
+<link rel="stylesheet" href="ui.css?v=1.0.0">
+<link rel="stylesheet" href="ui-moments.css?v=1.0.0">
+<link rel="stylesheet" href="ui-council.css?v=1.0.0">
+<link rel="stylesheet" href="ui-train.css?v=1.0.0">
 <style>
   @font-face {
     font-family: "IBM Plex Mono";
@@ -418,16 +402,9 @@
     #status-toggle { top: 1rem; left: calc(240px + 1.6rem); }
   }
 </style>
-<!-- Cloudflare Web Analytics: cookieless, aggregate page counts, no personal
-     data and nothing cross-site. Same token as the rest of maclaine.se, and it
-     ships in the itch build too, where the traffic lands under the itch.zone
-     hostname so the two audiences stay distinguishable. The only third-party
-     script here; build-itch.mjs names the host in its allowlist, so adding a
-     second one has to be a deliberate edit rather than a drift. -->
-<script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "423774682f304c9bae794a5f348fe3ed"}'></script>
 </head>
 <body>
-  <div id="boot">Loading Stockholm…</div>
+  <div id="boot">名古屋を読み込み中…</div>
   <script>
     // Fail-safe: never let the loading veil outlive the boot. A module that is
     // stale-cached or throws must not leave a blank page (it did, in v0.8.0).
@@ -456,35 +433,36 @@
   <div class="hud" id="hud-tl">
     <div class="brand">
       <svg viewBox="0 0 48 48" width="34" height="34" aria-hidden="true">
-        <path d="M9 39V22a15 15 0 0 1 30 0v17" fill="none" stroke="currentColor" stroke-width="5"></path>
-        <path d="M19 39V24a5 5 0 0 1 10 0v15" fill="none" stroke="var(--tb-green)" stroke-width="4.4"></path>
-        <path d="M5 41h38" stroke="currentColor" stroke-width="3"></path>
+        <circle cx="24" cy="26" r="14" fill="none" stroke="#B074D6" stroke-width="6"></circle>
+        <rect x="1" y="22.5" width="46" height="7" rx="3.5" fill="#FAB123"></rect>
+        <circle cx="10.5" cy="26" r="3" fill="#ffffff"></circle>
+        <circle cx="37.5" cy="26" r="3" fill="#ffffff"></circle>
       </svg>
       <div>
-        <h1>TUNNELBANA</h1>
-        <p class="sub">Build Stockholm · <span data-version></span></p>
+        <h1>JAPAN METROS</h1>
+        <p class="sub">名古屋 · 地下鉄をつくる · <span data-version></span></p>
       </div>
     </div>
     <div class="tb-panel" id="status-panel">
       <div class="tb-panel__body">
         <div class="tb-readout">
-          <span class="tb-num tb-num--counter" id="money">0<span class="tb-num__unit">kr</span></span>
+          <span class="tb-num tb-num--counter" id="money">0<span class="tb-num__unit">円</span></span>
           <div class="tb-readout__rates">
-            <span class="tb-rate tb-rate--up" id="rate-gross">+0.0 kr/s fares</span>
-            <span class="tb-rate tb-rate--down" id="rate-upkeep">−0.0 kr/s upkeep</span>
+            <span class="tb-rate tb-rate--up" id="rate-gross"></span>
+            <span class="tb-rate tb-rate--down" id="rate-upkeep"></span>
             <span class="tb-rate tb-rate--up" id="rate-rent"></span>
-            <span class="tb-rate" id="rate-net">+0.0 kr/s</span>
+            <span class="tb-rate" id="rate-net"></span>
           </div>
         </div>
         <hr class="tb-divider">
-        <div class="tb-row"><span><span class="tb-num tb-num--trust" id="pk">0.0 trust</span> <span class="tb-rate" id="pk-rate" style="color: var(--tb-politic)"></span></span><span id="pk-cov">0% coverage</span></div>
-        <div class="tb-row"><span><b class="tb-row__v" id="stat-delivered">0</b> <span id="riders-label">riders carried</span></span><span id="riders-rate"></span></div>
+        <div class="tb-row"><span><span class="tb-num tb-num--trust" id="pk">信頼 0.0</span> <span class="tb-rate" id="pk-rate" style="color: var(--tb-politic)"></span></span><span id="pk-cov">カバー率 0%</span></div>
+        <div class="tb-row"><span><b class="tb-row__v" id="stat-delivered">0</b> <span id="riders-label">延べ乗客数</span></span><span id="riders-rate"></span></div>
         <div class="tb-row" id="rush-row" hidden><span id="rush-chip"></span><span></span></div>
       </div>
     </div>
   </div>
 
-  <button id="status-toggle" aria-label="Hide the money panel" aria-expanded="true">‹</button>
+  <button id="status-toggle" aria-label="収支パネルを隠す" aria-expanded="true">‹</button>
 
   <div class="hud" id="hud-bl">
     <div class="tb-panel" id="station-panel" hidden>
@@ -492,7 +470,7 @@
         <span class="tb-panel__title" id="sp-name"></span>
         <button class="tb-linkbtn tb-linkbtn--edit" id="sp-rename" hidden>✎</button>
         <span class="tb-panel__tag" id="sp-tier"></span>
-        <button class="tb-panel__close" id="sp-close" aria-label="Close">×</button>
+        <button class="tb-panel__close" id="sp-close" aria-label="閉じる">×</button>
       </div>
       <div class="tb-panel__body" id="sp-body">
         <div id="sp-stats"></div>
@@ -509,7 +487,9 @@
         <button class="tb-btn tb-btn--inline tb-btn--danger" id="sp-down" hidden></button>
         <button class="tb-btn tb-btn--inline tb-btn--project tb-btn--block" id="sp-charter" hidden></button>
         <button class="tb-btn tb-btn--inline tb-btn--project tb-btn--block" id="sp-found" hidden></button>
+        <button class="tb-btn tb-btn--inline tb-btn--project tb-btn--block" id="sp-plan" hidden></button>
         <button class="tb-btn tb-btn--inline tb-btn--danger tb-btn--block" id="sp-remove" hidden></button>
+        <button class="tb-btn tb-btn--inline tb-btn--danger tb-btn--block" id="sp-demolish" hidden></button>
       </div>
     </div>
     <!-- The train inspector (0.15.0, design pass 05). Shares this slot with
@@ -523,7 +503,7 @@
           <span class="tb-insp__no" id="ti-no"></span>
         </span>
         <button class="tb-linkbtn tb-linkbtn--edit" id="ti-rename">✎</button>
-        <button class="tb-panel__close" id="ti-close" aria-label="Close">×</button>
+        <button class="tb-panel__close" id="ti-close" aria-label="閉じる">×</button>
       </div>
       <div class="tb-panel__body" id="ti-body">
         <span class="tb-insp__line" id="ti-line-wrap"><i class="tb-insp__dot" id="ti-dot"></i><span id="ti-line"></span></span>
@@ -560,7 +540,7 @@
       <div class="tb-panel__body">
         <div class="tb-row">
           <span class="tb-panel__tag" id="aim-tag"></span>
-          <button class="tb-panel__close" id="aim-close" aria-label="Hide these hints">×</button>
+          <button class="tb-panel__close" id="aim-close" aria-label="ヒントを隠す">×</button>
         </div>
         <p id="aim-text" style="margin-top: 0.25rem"></p>
       </div>
@@ -572,8 +552,8 @@
         </svg>
       </span>
       <span>
-        <span class="tb-bell__t">AVGÅNG</span>
-        <span class="tb-bell__s" id="bell-sub">Dispatch a train</span>
+        <span class="tb-bell__t">発車</span>
+        <span class="tb-bell__s" id="bell-sub">電車を出す</span>
         <!-- The depot bar (pass 04 section d): stabled against out running. -->
         <span class="tb-depot-bar" id="depot-bar" hidden style="display: flex; margin-top: 4px"><i class="stabled"></i><i class="out"></i></span>
       </span>
@@ -583,11 +563,11 @@
     </div>
   </div>
 
-  <button id="rail-toggle" aria-label="Hide the upgrade rail" aria-expanded="true">›</button>
+  <button id="rail-toggle" aria-label="ショップを隠す" aria-expanded="true">›</button>
 
   <div class="hud tb-rail" id="hud-r">
     <div class="tb-panel">
-      <div class="tb-panel__head"><span class="tb-panel__title" id="era-now">Era 1950</span></div>
+      <div class="tb-panel__head"><span class="tb-panel__title" id="era-now"></span></div>
       <div class="tb-panel__body">
         <button class="tb-btn tb-btn--inline tb-btn--project tb-btn--block" id="era-btn" hidden></button>
         <div class="tb-row" id="era-needs" style="color: var(--tb-ghost)"></div>
@@ -600,11 +580,11 @@
          cards to read how your lines were running. Era (the goal) then Network
          (the state) then Upgrades (the actions) also reads in that order. -->
     <div class="tb-panel">
-      <div class="tb-panel__head"><span class="tb-panel__title">Network</span></div>
+      <div class="tb-panel__head"><span class="tb-panel__title">ネットワーク</span></div>
       <div class="tb-panel__body">
-        <div class="tb-row">Stations <span class="tb-row__v" id="stat-stations">3</span></div>
-        <div class="tb-row">City demand <span class="tb-row__v" id="stat-demand">×1.00</span></div>
-        <div class="tb-row">Trains idle / active <span class="tb-row__v" id="stat-trains">1 / 1</span></div>
+        <div class="tb-row">駅 <span class="tb-row__v" id="stat-stations">3</span></div>
+        <div class="tb-row">街の需要 <span class="tb-row__v" id="stat-demand">×1.00</span></div>
+        <div class="tb-row">電車 待機 / 運行 <span class="tb-row__v" id="stat-trains">1 / 1</span></div>
         <hr class="tb-divider">
         <div id="line-rows"></div>
         <!-- Stabled trains are not drawn on the map at all, so a click can
@@ -620,8 +600,8 @@
 
     <div class="tb-panel">
       <div class="tb-panel__head">
-        <span class="tb-panel__title">Upgrades</span>
-        <span class="tb-panel__tag" id="qty-tag">Buy</span>
+        <span class="tb-panel__title">ショップ</span>
+        <span class="tb-panel__tag" id="qty-tag">購入数</span>
       </div>
       <div class="tb-panel__body"><div class="tb-quant" id="qty-row"></div></div>
     </div>
@@ -633,7 +613,7 @@
     <div class="tb-panel" id="fb-panel" hidden>
       <div class="tb-panel__head">
         <span class="tb-panel__title" id="fb-title"></span>
-        <button class="tb-panel__close" id="fb-close" aria-label="Close">×</button>
+        <button class="tb-panel__close" id="fb-close" aria-label="閉じる">×</button>
       </div>
       <div class="tb-panel__body">
         <textarea id="fb-text" rows="5" spellcheck="false"></textarea>
@@ -648,7 +628,7 @@
     <button class="tb-btn tb-btn--inline tb-btn--onmap" id="dia-toggle" hidden></button>
     <button class="tb-btn tb-btn--inline tb-btn--onmap" id="menu-open"></button>
     <button class="tb-btn tb-btn--inline tb-btn--onmap" id="fb-open"></button>
-    <button id="about-mark" aria-label="About and credits">&copy;</button>
+    <button id="about-mark" aria-label="このゲームとクレジット">&copy;</button>
   </div>
 
   <!-- The statistics office (0.11.1, owner ask): out of the menu, onto the
@@ -659,14 +639,14 @@
        bring them back). -->
   <div class="tb-panel" id="confirm" hidden>
     <div class="tb-panel__head">
-      <span class="tb-panel__title" id="confirm-title">ARE YOU SURE</span>
-      <button class="tb-panel__close" id="confirm-no" aria-label="Cancel">×</button>
+      <span class="tb-panel__title" id="confirm-title">よろしいか</span>
+      <button class="tb-panel__close" id="confirm-no" aria-label="やめる">×</button>
     </div>
     <div class="tb-panel__body">
       <p class="tb-menu__note" id="confirm-text" style="margin: 0"></p>
       <button class="tb-btn tb-btn--std tb-btn--danger tb-btn--block" id="confirm-yes"></button>
-      <button class="tb-btn tb-btn--std tb-btn--block" id="confirm-cancel">Cancel</button>
-      <button class="tb-btn tb-btn--inline tb-btn--block" id="confirm-mute">Do this and stop warning me</button>
+      <button class="tb-btn tb-btn--std tb-btn--block" id="confirm-cancel">やめる</button>
+      <button class="tb-btn tb-btn--inline tb-btn--block" id="confirm-mute">実行し、今後は確認しない</button>
     </div>
   </div>
 
@@ -676,7 +656,7 @@
   <div class="tb-panel" id="rename" hidden>
     <div class="tb-panel__head">
       <span class="tb-panel__title" id="rename-title"></span>
-      <button class="tb-panel__close" id="rename-close" aria-label="Cancel">×</button>
+      <button class="tb-panel__close" id="rename-close" aria-label="やめる">×</button>
     </div>
     <div class="tb-panel__body">
       <input id="rename-input" maxlength="40" autocomplete="off" spellcheck="false">
@@ -685,7 +665,7 @@
       <div id="rename-colors" class="tb-swatches" hidden></div>
       <button class="tb-btn tb-btn--std tb-btn--block" id="rename-yes"></button>
       <button class="tb-btn tb-btn--inline tb-btn--block" id="rename-given"></button>
-      <button class="tb-btn tb-btn--std tb-btn--block" id="rename-cancel">Cancel</button>
+      <button class="tb-btn tb-btn--std tb-btn--block" id="rename-cancel">やめる</button>
     </div>
   </div>
 
@@ -694,12 +674,12 @@
        wires behind the cards point a locked choice at the one that frees it. -->
   <div class="tb-panel" id="council-overlay" hidden>
     <div class="tb-panel__head">
-      <span class="tb-panel__title">THE COUNCIL</span>
+      <span class="tb-panel__title">市議会</span>
       <span class="tb-panel__tag" id="council-sub"></span>
-      <button class="tb-panel__close" id="council-close" aria-label="Close">×</button>
+      <button class="tb-panel__close" id="council-close" aria-label="閉じる">×</button>
     </div>
     <div class="tb-panel__body">
-      <p class="tb-menu__note" style="margin-top: 0">Trust buys decisions here. A decision is permanent, and it keeps paying its effect for as long as the city stands.</p>
+      <p class="tb-menu__note" style="margin-top: 0">ここでは信頼で市の決定を買う。決定は取り消せず、街がある限り効き続ける。</p>
       <div style="position: relative">
         <svg class="tb-council__wires" id="council-wires" aria-hidden="true"></svg>
         <div class="tb-council" id="council-tree" style="position: relative; z-index: 1"></div>
@@ -709,9 +689,9 @@
 
   <div class="tb-panel" id="stats-overlay" hidden>
     <div class="tb-panel__head">
-      <span class="tb-panel__title">STATISTICS</span>
+      <span class="tb-panel__title">統計室</span>
       <span class="tb-panel__tag" id="stats-sub"></span>
-      <button class="tb-panel__close" id="stats-close" aria-label="Close">×</button>
+      <button class="tb-panel__close" id="stats-close" aria-label="閉じる">×</button>
     </div>
     <div class="tb-panel__body">
       <!-- Pass 03 section c: the graph, the ledger, the record book. -->
@@ -719,13 +699,13 @@
         <div>
           <div class="tb-graph">
             <div class="tb-graph__head">
-              <span class="tb-graph__title">The last two hours</span>
+              <span class="tb-graph__title">直近 2 時間</span>
               <span class="tb-graph__legend" id="stats-legend"></span>
             </div>
             <canvas id="stats-graph" width="560" height="130" style="width: 100%"></canvas>
           </div>
           <table class="tb-linetable" style="margin-top: 0.9rem">
-            <thead><tr><th>Line</th><th>Riders</th><th>Earned</th><th>Trains</th></tr></thead>
+            <thead><tr><th>路線</th><th>乗客</th><th>収入</th><th>電車</th></tr></thead>
             <tbody id="stats-lines"></tbody>
           </table>
         </div>
@@ -744,7 +724,7 @@
 
   <div class="tb-panel" id="charter-coach" hidden>
     <div class="tb-panel__body">
-      <div class="tb-row"><span class="tb-panel__tag">NEW LINE</span><button class="tb-panel__close" id="charter-coach-close" aria-label="Dismiss new line guidance">×</button></div>
+      <div class="tb-row"><span class="tb-panel__tag">新しい路線</span><button class="tb-panel__close" id="charter-coach-close" aria-label="案内を閉じる">×</button></div>
       <p id="charter-coach-text" style="color: var(--tb-muted); line-height: var(--tb-lh)"></p>
     </div>
   </div>
@@ -763,7 +743,7 @@
   <div class="tb-moment" id="moment" hidden>
     <div class="tb-news" id="news" style="width: min(94vw, 860px); max-height: 92vh; overflow-y: auto">
       <div class="tb-news__masthead">
-        <div class="tb-news__name">Tunnelbanebladet</div>
+        <div class="tb-news__name">名古屋日報</div>
         <div class="tb-news__rule">
           <span id="news-ed"></span>
           <span id="news-date"></span>
@@ -803,243 +783,216 @@
       <div class="tb-menu__view" id="main-view">
         <div class="tb-menu__mark">
           <svg viewBox="0 0 48 48" width="30" height="30" aria-hidden="true">
-            <path d="M9 39V22a15 15 0 0 1 30 0v17" fill="none" stroke="var(--tb-ink)" stroke-width="5"></path>
-            <path d="M19 39V24a5 5 0 0 1 10 0v15" fill="none" stroke="var(--tb-green)" stroke-width="4.4"></path>
-            <path d="M5 41h38" stroke="var(--tb-ink)" stroke-width="3"></path>
+            <circle cx="24" cy="26" r="14" fill="none" stroke="#B074D6" stroke-width="6"></circle>
+            <rect x="1" y="22.5" width="46" height="7" rx="3.5" fill="#FAB123"></rect>
+            <circle cx="10.5" cy="26" r="3" fill="#ffffff"></circle>
+            <circle cx="37.5" cy="26" r="3" fill="#ffffff"></circle>
           </svg>
-          <span class="tb-menu__word">TUNNELBANA</span>
+          <span class="tb-menu__word">JAPAN METROS</span>
         </div>
-        <div class="tb-menu__sub">Build Stockholm, out from T-Centralen.</div>
-        <!-- The version is a DOOR now (owner ask, 0.11.4): prominent, and
-             clicking it opens the changelog for anyone who cares how the
-             game is moving. -->
-        <button class="tb-btn tb-btn--inline" id="version-btn" style="margin: 0.1rem 0 0.5rem"><span data-version></span> · What's new</button>
-        <div class="tb-menu__music" aria-label="Music player">
+        <div class="tb-menu__sub">名古屋 · 1957 年の 3 駅から、地下鉄をつくる。</div>
+        <!-- The version is a DOOR (0.11.4): clicking it opens the changelog. -->
+        <button class="tb-btn tb-btn--inline" id="version-btn" style="margin: 0.1rem 0 0.5rem"><span data-version></span> · 更新履歴</button>
+        <div class="tb-menu__music" aria-label="音楽">
           <span class="tb-menu__note" id="music-track">Morning Rain · TAD</span>
           <span class="tb-menu__music-controls">
-            <button class="tb-btn tb-btn--inline" id="music-prev" aria-label="Previous song">‹ Back</button>
-            <button class="tb-btn tb-btn--inline" id="music-next" aria-label="Next song">Next ›</button>
+            <button class="tb-btn tb-btn--inline" id="music-prev" aria-label="前の曲">‹ 前</button>
+            <button class="tb-btn tb-btn--inline" id="music-next" aria-label="次の曲">次 ›</button>
           </span>
         </div>
         <p class="tb-menu__note" id="offline-note" hidden style="color: var(--tb-amber); margin-top: 0"></p>
-        <button class="tb-btn tb-btn--primary tb-btn--block" id="menu-resume">Start</button>
-        <button class="tb-btn tb-btn--std tb-btn--block" id="menu-help">How to play</button>
-        <button class="tb-btn tb-btn--std tb-btn--block" id="menu-ach">Achievements</button>
-        <button class="tb-btn tb-btn--std tb-btn--block" id="menu-stats" hidden>Statistics</button>
-        <button class="tb-btn tb-btn--std tb-btn--block" id="menu-slots">Saves</button>
-        <button class="tb-btn tb-btn--std tb-btn--block" id="menu-settings">Settings</button>
-        <button class="tb-btn tb-btn--std tb-btn--block" id="menu-about">About</button>
-        <button class="tb-btn tb-btn--std tb-btn--block" id="menu-feedback">Send feedback</button>
-        <button class="tb-btn tb-btn--std tb-btn--block" id="menu-quit" hidden>Quit to menu</button>
+        <button class="tb-btn tb-btn--primary tb-btn--block" id="menu-resume">はじめる</button>
+        <button class="tb-btn tb-btn--std tb-btn--block" id="menu-help">遊び方</button>
+        <button class="tb-btn tb-btn--std tb-btn--block" id="menu-ach">実績</button>
+        <button class="tb-btn tb-btn--std tb-btn--block" id="menu-stats" hidden>統計室</button>
+        <button class="tb-btn tb-btn--std tb-btn--block" id="menu-slots">セーブ</button>
+        <button class="tb-btn tb-btn--std tb-btn--block" id="menu-settings">設定</button>
+        <button class="tb-btn tb-btn--std tb-btn--block" id="menu-about">このゲームについて</button>
+        <button class="tb-btn tb-btn--std tb-btn--block" id="menu-feedback">意見を送る</button>
+        <button class="tb-btn tb-btn--std tb-btn--block" id="menu-quit" hidden>メニューに戻る</button>
       </div>
 
       <div class="tb-menu__view" id="help-view" hidden>
-        <div class="tb-menu__head"><div class="tb-menu__title">HOW TO PLAY</div><button class="tb-btn tb-btn--inline" id="help-back-top">Back</button></div>
-        <div class="tb-menu__sub">Everything the game never says out loud</div>
+        <div class="tb-menu__head"><div class="tb-menu__title">遊び方</div><button class="tb-btn tb-btn--inline" id="help-back-top">戻る</button></div>
+        <div class="tb-menu__sub">ゲームが口では言わないこと</div>
 
         <div class="tb-prose">
-          <h2>The goal</h2>
-          <p>Build Stockholm's tunnelbana from the first 1950 tunnel to the whole network.
-          Each era is one real line's story: the green line south and west, the red line in
-          1964, the blue line in 1975, and then the city is yours to build freely. The game
-          is finite and has an ending, and your trains keep running after it.</p>
+          <h2>操作</h2>
+          <p><b>線の端をドラッグ</b> 延ばす · <b>予定駅（点線の輪）をクリック</b> 近くの端から延ばす ·
+          <b>線の端を右クリック</b> 撤去（駅の画面からも） · <b>駅をクリック</b> 駅の画面 · <b>電車をクリック</b> 電車の画面 ·
+          <b>Space</b> 発車 · <b>Esc</b> メニュー</p>
         </div>
 
         <div class="tb-prose">
-          <h2>Money</h2>
-          <p>Fares are in kronor (kr), the Swedish currency. Passengers pay per kilometre
-          they ride, the moment they board. Every train and every station costs upkeep each
-          second, so a network you cannot fill is a network that drains you. Nothing is
-          billed until your first departure: the line is not open yet.</p>
+          <h2>目標</h2>
+          <p>1957 年の東山線、名古屋・伏見・栄の 3 駅から、名古屋市営地下鉄の六路線をつくる。
+          時代はどれも一本の実在路線の物語で、1965 年に名城線、1971 年に名港線、1977 年に鶴舞線、
+          1989 年に桜通線。名城線はやがて輪になる。2011 年からは街があなたのもの。
+          ゲームには終わり（終点）があり、その後も電車は走り続ける。</p>
         </div>
 
         <div class="tb-prose">
-          <h2>Trust</h2>
-          <p>The city's patience with you, earned slowly by covering more of the region with
-          useful service. It cannot be bought. Trust pays for the things money alone cannot:
-          chartering a new line, upgrading a station into a Hub, and advancing to the next
-          era.</p>
-          <p>It has a ceiling: exactly what the next era asks of you, shown beside the number.
-          Once you are full you earn none until you spend some or move on, so trust is
-          something to use rather than hoard. The last era lifts the ceiling for good.</p>
-          <p>Beat the first era and the council sits. Its corner button opens a tree of
-          decisions that trust buys outright. A decision is permanent and keeps paying its
-          effect, and some decisions unlock others, so what you take shapes what you are
-          offered next.</p>
+          <h2>お金</h2>
+          <p>運賃は円。乗客は乗った瞬間に、乗る距離に応じて払う（ゲーム内の抽象値で、実際の運賃や建設費とは関係ない）。
+          電車も駅も毎秒維持費がかかるので、満たせない網はお金を減らす。最初の発車までは何も請求されない。
+          まだ開業していないから。</p>
         </div>
 
         <div class="tb-prose">
-          <h2>Riders carried</h2>
-          <p>Every passenger you have ever delivered to their destination. This is the number
-          the eras ask for: reach the target, spend the trust, and the city moves into its
-          next decade.</p>
+          <h2>信頼</h2>
+          <p>市議会の信頼。地域のより多くを役に立つ運行で覆うと、少しずつ貯まる。買うことはできない。
+          新しい路線のチャーター、駅をターミナルにすること、次の時代へ進むことに使う。</p>
+          <p>上限があり、次の時代が求める量の 2 倍まで。満ちると、使うか次へ進むまで増えない。
+          最後の時代で上限は外れる。</p>
+          <p>最初の時代を越えると市議会が開く。隅のボタンから、信頼で買う決定の木が見える。
+          決定は永続し、いくつかは次の決定を開く。</p>
         </div>
 
         <div class="tb-prose">
-          <h2>Building</h2>
-          <p>Drag either end of a line anywhere on the map. The pulsing dashed ring is the
-          next real station, staked out by the city with its real name and the full demand of
-          its neighbourhood. Only the next station along a line's plan is ever staked, so you
-          find the line as you build it. Right-click a line end to demolish it.</p>
-          <p>The city builds to a plan. Until the 1950 line is finished, only staked stations
-          may be built; finish it and you may place your own stations anywhere, for whatever
-          the label says they are worth. Each era also expects its line complete before the
-          next can begin, and a demolished stop on a historic line counts against you until
-          it is rebuilt.</p>
-          <p>Once you may build anywhere, hovering the middle of a line segment offers a ghost
-          stop with a plus. Click it to splice a new station into the tunnel you already dug,
-          for the price of the station works alone.</p>
-          <p>Cost grows along the line you are extending, so a long line gets expensive; a
-          new line starts cheap again.</p>
-          <p>Chartering a line creates that service and gives it its first train. It does not
-          unlock general building: follow that new line's coloured end to its own staked
-          continuation. When two ends can reach the same stake, choose the line from the
-          small colour-labelled choice beside it.</p>
-          <p>On the map: every station you have built is a hollow circle, drawn larger at the
-          two ends of a line. The tinted disc around it, in that line's colour, is the area it
-          serves; it widens with the station's tier and its entrances. A thin outer ring with
-          a solid centre marks a Hub or a place where two lines meet. A greyed circle is a
-          stop you placed off-anchor, between the real ones. A dashed ring with a name is a
-          real station waiting for you.</p>
+          <h2>延べ乗客数</h2>
+          <p>目的地まで運んだ全ての人。時代が求める数字で、目標に届き、信頼を払うと、街は次の時代へ進む。</p>
         </div>
 
         <div class="tb-prose">
-          <h2>Running trains</h2>
-          <p>Ring AVGÅNG (or press space) to send a train out. Hiring drivers automates it.
-          Each line shows how often it sends a train: more trains, faster stock and a tighter
-          timetable all shorten that number, and a timetable also stops trains bunching into
-          convoys. In the Network panel, <b>15 s</b> is the service interval and <b>14 🚆</b>
-          means fourteen active trains. The number between <b>−</b> and <b>+</b> is the train
-          target for that line.</p>
+          <h2>建設</h2>
+          <p>線の端を地図のどこへでもドラッグする。脈打つ点線の輪は、市が杭を打った次の実在駅（予定駅）で、
+          本当の名前と駅番号、周りの需要を持つ。予定駅は計画の次の一駅だけ。線は建てながら見つけていく。</p>
+          <p>市は計画どおりに建てる。最初の計画（東山線を東山公園まで）を仕上げるまでは予定駅にしか建てられない。
+          仕上げると、どこにでも独自駅を置ける。時代はそれぞれの計画の完成を求め、歴史路線の駅を壊すと、
+          建て直すまで計画の妨げになる。</p>
+          <p>桜通線や鶴舞線のように、既にある駅を<b>経由</b>する計画もある。その駅に大きな点線の輪が出たら、
+          計画の路線をそこへ通す。乗換駅は市が整える。</p>
+          <p><b>名城線は輪になる。</b>名城線の端を、もう一方の端の駅へつなぐと環状運転が始まる。
+          輪には終点が無く、電車は右回りと左回りに走り続ける。輪の駅を一つ撤去すると、そこで輪が開く。</p>
+          <p>どこにでも建てられるようになると、線の区間の中ほどにプラス付きの影の駅が出る。
+          クリックすると、もう掘ったトンネルに駅だけの費用で駅を足せる。</p>
+          <p>費用は延ばす線の駅数とともに上がる。新しい線はまた安く始まる。</p>
+          <p>地図では、建てた駅は白抜きの丸で、線の端は大きい。周りの路線色の円は駅が運ぶ範囲。
+          細い外輪と中心の点はターミナルか乗換駅。灰色の丸は自分で置いた独自駅。
+          名前付きの点線の輪は、あなたを待つ実在の駅。</p>
         </div>
 
         <div class="tb-prose">
-          <h2>Time, rush and trouble</h2>
-          <p>The clock by the coverage number runs the city's day. Each rush hour is graded
-          on how many of its would-be riders you actually carried, and a clean rush earns a
-          little trust. From 1957 the signals sometimes fail: the struck station stops
-          boarding until it passes, or you send the repair crew for a fee. None of it is
-          fatal; all of it is information.</p>
+          <h2>電車を走らせる</h2>
+          <p>「発車」（または Space）で電車を出す。運転士を雇うと自動になる。各路線は発車の間隔を示し、
+          電車を増やす、速い車両、ダイヤ、どれもこの数字を縮める。ネットワークの欄で <b>15 秒</b> は発車間隔、
+          <b>14 🚆</b> は動いている電車の数。<b>−</b> と <b>+</b> の間の数字はその路線の目標両数。</p>
         </div>
 
         <div class="tb-prose">
-          <h2>The offices</h2>
-          <p>Later purchases open new pages and powers: the statistics office keeps graphs,
-          records and a ledger per line; the works department places bulk upgrade orders
-          from the Network panel; Trafikledning lets you mark stops for the express to skip
-          (set it in the station panel, trains then alternate full and express). Beat the
-          first era and Linjekartan appears in the map corner, hanging your network on the
-          platform wall as a proper diagram. Watch the map for quiet purple diamonds, too.
-          The city has odd corners, and noticing them is worth something. And now and then
-          a golden train rides one of your lines. Catch it with a click for a small thank
-          you from the city.</p>
+          <h2>時間、ラッシュ、トラブル</h2>
+          <p>カバー率の横の時計が街の一日。朝夕のラッシュは、乗りたかった人のうち何人を運べたかで採点され、
+          見事なラッシュには少し信頼がつく。1971 年からは信号故障が起きる。その駅は乗車できなくなり、
+          待つか、費用を払って保線係を送る。どれも致命的ではなく、どれも情報。</p>
         </div>
 
         <div class="tb-prose">
-          <h2>Managing the fleet</h2>
-          <p>A new train joins the line with the fewest. Move them yourself in the Network
-          panel: <b>+</b> orders a train in from the line best able to spare one, <b>−</b> sends
-          one to the line that needs it most. A transfer costs a small depot fee, and if every
-          train is out running, the order waits and executes the moment one parks at a
-          terminus; click the pending marker to cancel it and take the fee back. The fleet
-          ceiling rises with every era, and the price of each new train is the real limit.</p>
+          <h2>事務と楽しみ</h2>
+          <p>後の買い物は新しい頁と力を開く。統計室はグラフと記録と台帳、工務部はネットワークの欄から一括発注、
+          運転指令は急行が通過する駅を決められる。最初の時代を越えると、地図の隅に路線図が出る。
+          地図に静かに光る紫のひし形にも目を。街には珍しい場所があり、見つけると何かがある。
+          ときどき金のしゃちほこ列車が線を走る。クリックでつかまえると、市から小さなお礼。
+          夜の東山線には、黄色い何かが走ると言われる。</p>
         </div>
 
         <div class="tb-prose">
-          <h2>Stations</h2>
-          <p>Click any station to see what it is doing: how crowded it is, where its
-          passengers are heading, how many gave up waiting. Upgrade it there. Entrances widen
-          its catchment, gates load trains faster, and a higher tier is what lets lines meet:
-          two lines can share a Station, and a Hub can found an entirely new line.</p>
+          <h2>車両の回送</h2>
+          <p>新しい電車は電車のいちばん少ない路線へ行く。ネットワークの欄で路線ごとの目標両数を決めると、
+          車両が自動でそろう。回送には小さな手数料がかかり、全ての電車が走っていれば、止まった時に移る。
+          輪になった線では、次の駅で降りて移る。電車の上限は時代ごとに上がる。</p>
         </div>
 
         <div class="tb-prose">
-          <h2>Away from the game</h2>
-          <p>With drivers hired, the network keeps earning while you are gone, at a fraction
-          of what it makes with you watching. It is safe to close the tab; progress saves
-          itself.</p>
+          <h2>駅</h2>
+          <p>駅をクリックすると、その駅の様子が見える。混み具合、行き先、待ちきれず去った人数。
+          ここで設備を買う。出入口は集客を広げ、改札は乗車を速くし、駅の格は路線が出会う条件になる。
+          二つの路線は主要駅を共有でき、ターミナルからは新しい路線を敷ける。</p>
         </div>
 
-        <!-- Icon key. Built at runtime from the same <template> the shop draws
-             from, so a new icon cannot ship without a meaning next to it. -->
         <div class="tb-prose">
-          <h2>What the icons mean</h2>
+          <h2>留守の間</h2>
+          <p>運転士がいれば、留守の間も網は稼ぐ（見ている時の一部だけ）。タブを閉じても大丈夫。進み具合は自動で保存される。</p>
+        </div>
+
+        <div class="tb-prose">
+          <h2>アイコンの意味</h2>
         </div>
         <div class="tb-key" id="icon-key"></div>
 
-        <button class="tb-btn tb-btn--std tb-btn--block" id="help-back" style="margin-top: 1rem">Back</button>
+        <button class="tb-btn tb-btn--std tb-btn--block" id="help-back" style="margin-top: 1rem">戻る</button>
       </div>
 
       <div class="tb-menu__view" id="ach-view" hidden>
-        <div class="tb-menu__head"><div class="tb-menu__title">ACHIEVEMENTS</div><button class="tb-btn tb-btn--inline" id="ach-back-top">Back</button></div>
+        <div class="tb-menu__head"><div class="tb-menu__title">実績</div><button class="tb-btn tb-btn--inline" id="ach-back-top">戻る</button></div>
         <div class="tb-menu__sub" id="ach-count"></div>
         <div id="ach-list"></div>
-        <button class="tb-btn tb-btn--std tb-btn--block" id="ach-back" style="margin-top: 1rem">Back</button>
+        <button class="tb-btn tb-btn--std tb-btn--block" id="ach-back" style="margin-top: 1rem">戻る</button>
       </div>
 
       <div class="tb-menu__view" id="slots-view" hidden>
-        <div class="tb-menu__title">SAVES</div>
-        <div class="tb-menu__sub" id="slots-sub">Three networks side by side. Switching parks the one you are playing in its own slot first.</div>
+        <div class="tb-menu__title">セーブ</div>
+        <div class="tb-menu__sub" id="slots-sub"></div>
         <div id="slot-list" style="display: flex; flex-direction: column; gap: 10px"></div>
-        <button class="tb-btn tb-btn--std tb-btn--block" id="slots-back" style="margin-top: 1rem">Back</button>
+        <button class="tb-btn tb-btn--std tb-btn--block" id="slots-back" style="margin-top: 1rem">戻る</button>
       </div>
 
       <div class="tb-menu__view" id="log-view" hidden>
-        <div class="tb-menu__head"><div class="tb-menu__title">CHANGELOG</div><button class="tb-btn tb-btn--inline" id="log-back-top">Back</button></div>
-        <div class="tb-menu__sub">Every release, newest first. The same notes the update feed carries.</div>
+        <div class="tb-menu__head"><div class="tb-menu__title">更新履歴</div><button class="tb-btn tb-btn--inline" id="log-back-top">戻る</button></div>
+        <div class="tb-menu__sub">新しい順。</div>
         <div id="log-list" class="tb-prose"></div>
-        <button class="tb-btn tb-btn--std tb-btn--block" id="log-back" style="margin-top: 1rem">Back</button>
+        <button class="tb-btn tb-btn--std tb-btn--block" id="log-back" style="margin-top: 1rem">戻る</button>
       </div>
 
       <div class="tb-menu__view" id="about-view" hidden>
-        <div class="tb-menu__title">ABOUT</div>
-        <div class="tb-menu__sub">Tunnelbana · Build Stockholm · <span data-version></span></div>
+        <div class="tb-menu__title">このゲームについて</div>
+        <div class="tb-menu__sub">Japan Metros · 名古屋 · <span data-version></span></div>
         <p class="tb-menu__note" style="margin-top: 0">
-          An incremental game about building Stockholm's rail transit, from the first tunnel
-          of 1950 outward. Unofficial fan work: not affiliated with any transit operator or
-          Region Stockholm. Station names and geography are facts of the city; everything
-          else is a game. Everything you see is subject to change.
+          名古屋の地下鉄を 1957 年の最初のトンネルから育てていく放置ゲーム。非公式のファン作品で、
+          名古屋市交通局をはじめ、どの交通事業者とも関係ない。駅名と地理は街の事実、それ以外はゲーム。
+          内容は変わることがある。
         </p>
-        <div class="tb-setting"><span>Map data</span><span class="tb-setting__v">&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors</span></div>
-        <div class="tb-setting"><span>Map tiles</span><span class="tb-setting__v"><a href="https://openfreemap.org">OpenFreeMap</a></span></div>
-        <div class="tb-setting"><span>Map engine</span><span class="tb-setting__v"><a href="https://maplibre.org">MapLibre GL JS</a> (BSD-3)</span></div>
-        <div class="tb-setting"><span>Typefaces</span><span class="tb-setting__v">IBM Plex Mono · Libre Caslon (both SIL OFL)</span></div>
-        <div class="tb-setting"><span>Music</span><span class="tb-setting__v">"Morning Rain", "Countryside", "Oceanside" &amp; "Florist" by TAD (<a href="https://opengameart.org/content/lofi-compilation">OpenGameArt</a>, CC0)</span></div>
-        <div class="tb-setting"><span>Visual system</span><span class="tb-setting__v">Tunnelbana pass 04</span></div>
-        <div class="tb-setting"><span>A game by</span><span class="tb-setting__v">Matthew MacLaine</span></div>
-        <div class="tb-setting"><span>Analytics</span><span class="tb-setting__v">anonymous page counts and era milestones, cookieless, off switch in Settings</span></div>
-        <button class="tb-btn tb-btn--std tb-btn--block" id="about-back" style="margin-top: 1rem">Back</button>
+        <div class="tb-setting"><span>原作</span><span class="tb-setting__v">based on <a href="https://github.com/MMacLaine/tunnelbana">Tunnelbana</a> by Matthew MacLaine (MIT)</span></div>
+        <div class="tb-setting"><span>地図データ</span><span class="tb-setting__v">&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors</span></div>
+        <div class="tb-setting"><span>地図タイル</span><span class="tb-setting__v"><a href="https://openfreemap.org">OpenFreeMap</a></span></div>
+        <div class="tb-setting"><span>地図エンジン</span><span class="tb-setting__v"><a href="https://maplibre.org">MapLibre GL JS</a> (BSD-3)</span></div>
+        <div class="tb-setting"><span>駅の座標</span><span class="tb-setting__v">ekidata.jp 由来の公開データ（open-data-jp-railway-stations）</span></div>
+        <div class="tb-setting"><span>書体</span><span class="tb-setting__v">IBM Plex Mono · Libre Caslon（SIL OFL）· 和文は端末の書体</span></div>
+        <div class="tb-setting"><span>音楽</span><span class="tb-setting__v">"Morning Rain", "Countryside", "Oceanside" &amp; "Florist" by TAD (<a href="https://opengameart.org/content/lofi-compilation">OpenGameArt</a>, CC0)</span></div>
+        <div class="tb-setting"><span>解析</span><span class="tb-setting__v">なし。このページは何も外へ送らない</span></div>
+        <button class="tb-btn tb-btn--std tb-btn--block" id="about-back" style="margin-top: 1rem">戻る</button>
       </div>
 
       <div class="tb-menu__view" id="settings-view" hidden>
-        <div class="tb-menu__title">SETTINGS</div>
-        <div class="tb-setting"><span>Theme</span><button class="tb-btn tb-btn--inline" id="settings-theme">Dark</button></div>
-        <div class="tb-setting"><span>Interface size</span><button class="tb-btn tb-btn--inline" id="settings-scale">Standard</button></div>
-        <div class="tb-setting"><span>Text contrast</span><button class="tb-btn tb-btn--inline" id="settings-contrast">Default</button></div>
-        <div class="tb-setting"><span>Numbers</span><button class="tb-btn tb-btn--inline" id="settings-numfmt">Short</button></div>
-        <div class="tb-setting"><span>City notes</span><span class="tb-setting__controls"><button class="tb-btn tb-btn--inline" id="settings-notes">On</button><button class="tb-btn tb-btn--inline" id="settings-notes-history">Read</button></span></div>
-        <div class="tb-setting"><span>Milestone pings</span><span class="tb-setting__controls"><button class="tb-btn tb-btn--inline" id="settings-pulse">On</button><button class="tb-btn tb-btn--inline" id="settings-milestones-history">Read</button></span></div>
-        <div class="tb-setting"><span>Warnings</span><button class="tb-btn tb-btn--inline" id="settings-warns">On</button></div>
-        <div class="tb-setting"><span>Master</span><input type="range" class="tb-slider" id="vol-master" min="0" max="100"></div>
-        <div class="tb-setting"><span>Music</span><input type="range" class="tb-slider" id="vol-music" min="0" max="100"></div>
-        <div class="tb-setting"><span>Effects</span><input type="range" class="tb-slider" id="vol-effects" min="0" max="100"></div>
-        <div class="tb-setting"><span>Language</span><span class="tb-setting__v">English</span></div>
-        <div class="tb-setting"><span>Save</span><span class="tb-setting__v" style="color: var(--tb-muted)" id="save-status">automatic, local</span></div>
-        <button class="tb-btn tb-btn--std tb-btn--block" id="settings-export" style="margin-top: 0.7rem">Export save</button>
-        <button class="tb-btn tb-btn--std tb-btn--block" id="settings-import">Import save</button>
-        <button class="tb-btn tb-btn--std tb-btn--block" id="settings-importfile">Import from file</button>
+        <div class="tb-menu__title">設定</div>
+        <div class="tb-setting"><span>テーマ</span><button class="tb-btn tb-btn--inline" id="settings-theme">ダーク</button></div>
+        <div class="tb-setting"><span>表示の大きさ</span><button class="tb-btn tb-btn--inline" id="settings-scale">標準</button></div>
+        <div class="tb-setting"><span>文字のコントラスト</span><button class="tb-btn tb-btn--inline" id="settings-contrast">標準</button></div>
+        <div class="tb-setting"><span>数字</span><button class="tb-btn tb-btn--inline" id="settings-numfmt">短縮</button></div>
+        <div class="tb-setting"><span>街の便り</span><span class="tb-setting__controls"><button class="tb-btn tb-btn--inline" id="settings-notes">表示</button><button class="tb-btn tb-btn--inline" id="settings-notes-history">読む</button></span></div>
+        <div class="tb-setting"><span>節目</span><button class="tb-btn tb-btn--inline" id="settings-milestones-history">読む</button></div>
+        <!-- Milestone pings: only when the pack names its own endpoint. -->
+        <div class="tb-setting" id="pulse-row" hidden><span>節目の送信</span><button class="tb-btn tb-btn--inline" id="settings-pulse">表示</button></div>
+        <div class="tb-setting"><span>確認</span><button class="tb-btn tb-btn--inline" id="settings-warns">あり</button></div>
+        <div class="tb-setting"><span>全体の音量</span><input type="range" class="tb-slider" id="vol-master" min="0" max="100"></div>
+        <div class="tb-setting"><span>音楽</span><input type="range" class="tb-slider" id="vol-music" min="0" max="100"></div>
+        <div class="tb-setting"><span>効果音</span><input type="range" class="tb-slider" id="vol-effects" min="0" max="100"></div>
+        <div class="tb-setting"><span>言語</span><span class="tb-setting__v">日本語</span></div>
+        <div class="tb-setting"><span>保存</span><span class="tb-setting__v" style="color: var(--tb-muted)" id="save-status">自動・この端末</span></div>
+        <button class="tb-btn tb-btn--std tb-btn--block" id="settings-export" style="margin-top: 0.7rem">セーブを書き出す</button>
+        <button class="tb-btn tb-btn--std tb-btn--block" id="settings-import">セーブを読み込む</button>
+        <button class="tb-btn tb-btn--std tb-btn--block" id="settings-importfile">ファイルから読み込む</button>
         <input type="file" id="import-file" accept=".tbsave,.txt,.json" hidden>
-        <button class="tb-btn tb-btn--std tb-btn--block" id="settings-restore" hidden>Restore backup</button>
+        <button class="tb-btn tb-btn--std tb-btn--block" id="settings-restore" hidden>バックアップから戻す</button>
         <textarea id="import-text" hidden spellcheck="false"></textarea>
-        <button class="tb-btn tb-btn--std tb-btn--danger tb-btn--block" id="settings-reset">Reset progress</button>
-        <button class="tb-btn tb-btn--std tb-btn--block" id="settings-back">Back</button>
+        <button class="tb-btn tb-btn--std tb-btn--danger tb-btn--block" id="settings-reset">最初からやり直す</button>
+        <button class="tb-btn tb-btn--std tb-btn--block" id="settings-back">戻る</button>
       </div>
 
       <div class="tb-menu__view" id="record-view" hidden>
-        <div class="tb-menu__head"><div class="tb-menu__title" id="record-title">CITY NOTES</div><button class="tb-btn tb-btn--inline" id="record-back-top">Back</button></div>
+        <div class="tb-menu__head"><div class="tb-menu__title" id="record-title">街の便り</div><button class="tb-btn tb-btn--inline" id="record-back-top">戻る</button></div>
         <div class="tb-menu__sub" id="record-sub"></div>
         <div class="tb-prose" id="record-list"></div>
-        <button class="tb-btn tb-btn--std tb-btn--block" id="record-back" style="margin-top: 1rem">Back to settings</button>
+        <button class="tb-btn tb-btn--std tb-btn--block" id="record-back" style="margin-top: 1rem">設定に戻る</button>
       </div>
     </div>
   </div>
@@ -1061,6 +1014,6 @@
     <svg data-i="stats" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V11M10 20V5M16 20v-6M3 20h18"></path></svg>
   </template>
 
-  <script type="module" src="src/main.js?v=0.15.4"></script>
+  <script type="module" src="src/main.js?v=1.0.0"></script>
 </body>
 </html>

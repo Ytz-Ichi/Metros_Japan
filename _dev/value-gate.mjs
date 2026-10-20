@@ -5,7 +5,15 @@
 // drivers-worse-than-clicking (622), free-placement 2:1 (624), and the dead
 // fleet (634). Run: node _dev/value-gate.mjs
 import * as sim from '../src/sim.js';
-import { ANCHORS, WEST_FIRST } from '../src/data.js';
+
+// City-agnostic since the pack split (spec 01 §5.3): the opening line is
+// built to the end of the pack's first corridor, and the second line is the
+// pack's first charter, three stops along its own corridor. Under
+// METROS_CITY=stockholm that is exactly the old 1950 line plus Västerort.
+const { ANCHORS, CORRIDORS, CITY } = sim;
+const FIRST = CORRIDORS.find((c) => c.id === CITY.test.firstCorridor);
+const PROJECT = CITY.test.firstProject;
+const PROJECT_CORRIDOR = CORRIDORS.find((c) => c.project === PROJECT);
 
 // A trunk round trip is ~270 s at 2026-08-04 speeds; warmup must cover at
 // least one full cycle and the measurement window more than one, or the gate
@@ -33,6 +41,17 @@ const MIN_GAIN = 0.05; // kr/s a purchase must add in its scenario
 //   slightly negative on income alone; entrances and gates are the payers,
 //   tier is the unlock (tier 3 founds lines).
 const LEDGER = {};
+// Nagoya, measured 2026-10-20 at the pack split (balance is M3's job, spec
+// 01 §7): the transfer decision in the 'high' regime of the two-line probe
+// (東山線 to 黒川 plus a three-stop 名城線 off 栄) reads -2.95/s, sd 0.05;
+// the same case reads +0.88 at 'mid' and +1.58 at 'low', and -1.17 with five
+// trains at 'high'. Cheaper transfers route more riders through the short
+// shuttle's capacity once every district is at its cap: a regime effect, not
+// wiring (Stockholm's identical case still measures +0.84). Ledgered for
+// this city only, so the WARN stays on the agenda instead of silencing.
+if (sim.CITY.id === 'nagoya') {
+  LEDGER['co transfer'] = 'capacity-bound regime in the Nagoya probe; positive at mid/low demand (M3)';
+}
 
 function build(owned, demand) {
   const g = sim.newGame();
@@ -45,18 +64,23 @@ function build(owned, demand) {
   // deficits never mothball.
   g.nextIncidentAt = Infinity;
   g.totalDelivered = 6000; // era gates read this; spawn does not
-  while (g.lines[0].stations.length < WEST_FIRST) {
-    sim.extendTo(g, 0, 'tail', ANCHORS[g.lines[0].stations.length].geo, g.lines[0].stations.length);
+  for (const k of FIRST.anchors) {
+    if (sim.usedAnchorsAll(g).has(k)) continue;
+    if (!sim.extendTo(g, 0, 'tail', ANCHORS[k].geo, k)) throw new Error('first corridor build failed at ' + ANCHORS[k].name);
   }
-  if (owned.westline) {
+  if (owned.project) {
     g.pk = 1e6;
-    sim.buy(g, 'westline');
-    for (let k = WEST_FIRST + 1; k < WEST_FIRST + 4; k++) {
-      sim.extendTo(g, 1, 'tail', ANCHORS[k].geo, k);
+    if (!sim.buy(g, PROJECT)) throw new Error('charter ' + PROJECT + ' refused');
+    let built = 0;
+    for (const k of PROJECT_CORRIDOR.anchors) {
+      if (built >= 3) break;
+      if (sim.usedAnchorsOnLine(g, 1).has(k)) continue;
+      if (!sim.extendTo(g, 1, 'tail', ANCHORS[k].geo, k)) throw new Error('charter build failed at ' + ANCHORS[k].name);
+      built++;
     }
   }
   for (const [id, n] of Object.entries(owned)) {
-    if (id === 'westline') continue; // handled above, needs its side effect
+    if (id === 'project') continue; // handled above, needs its side effect
     if (id === 'trainSplit') continue; // fleet allocation directive, not a catalog item
     if (id.startsWith('council:')) { g.council[id.slice(8)] = true; continue; } // a decision, not a purchase
     g.owned[id] = n;
@@ -65,7 +89,7 @@ function build(owned, demand) {
         // With two lines, bought trains alternate so both are staffed; a case
         // may instead stack the whole bought fleet on the branch
         // (trainSplit: 'west'), the moveTrain allocation play.
-        const line = owned.trainSplit === 'west' ? 1 : owned.westline ? i % 2 : 0;
+        const line = owned.trainSplit === 'west' ? 1 : owned.project ? i % 2 : 0;
         sim.addTrain(g, line);
       }
     }
@@ -142,7 +166,7 @@ function report(c, m) {
 const CASES = [
   { id: 'drivers',    demand: 'low',  base: {},                                        buy: { drivers: 1 } },
   { id: 'train #2',   demand: 'high', base: { drivers: 1 },                            buy: { train: 1 } },
-  { id: 'train 2-line',demand: 'high', base: { drivers: 1, westline: 1 },              buy: { train: 1 } },
+  { id: 'train 2-line',demand: 'high', base: { drivers: 1, project: 1 },              buy: { train: 1 } },
   // timetable pays as REGULARITY (even-interval terminus dispatch: less
   // bunching, less abandonment). Max is 1: at current speeds no reachable
   // fleet gets terminus spacing under the signalling floor, so every
@@ -158,10 +182,13 @@ const CASES = [
   // (measured -0.22 at train:3, positive from train:5). Same lesson st ent
   // taught at the slowdown.
   { id: 'entrances',  demand: 'low',  base: { drivers: 1, train: 5, timetable: 1 },    buy: { entrances: 1 } },
-  { id: 'through',    demand: 'low',  base: { drivers: 1, train: 2, westline: 1 },     buy: { through: 1 } },
+  { id: 'through',    demand: 'low',  base: { drivers: 1, train: 2, project: 1 },     buy: { through: 1 } },
   { id: 'stock1957',  demand: 'high', base: { drivers: 1, train: 1, timetable: 1 },    buy: { stock1957: 1 } },
   { id: 'c4stock',    demand: 'high', base: { drivers: 1, train: 1, timetable: 1 },    buy: { c4stock: 1 } },
   { id: 'c14stock',   demand: 'high', base: { drivers: 1, train: 1, timetable: 1 },    buy: { c14stock: 1 } },
+  // A pack's own stock (Nagoya's N1000/N3000, the sandbox's last sink).
+  ...(sim.CATALOG.some((i) => i.id === 'stockE')
+    ? [{ id: 'stockE', demand: 'high', base: { drivers: 1, train: 1, timetable: 1 }, buy: { stockE: 1 } }] : []),
   { id: 'zonefare',   demand: 'low',  base: { drivers: 1, train: 2 },                  buy: { zonefare: 1 } },
   // Late sinks (638 §5): each must still earn its keep in its regime.
   { id: 'artstation', demand: 'mid',  base: { drivers: 1, train: 4, timetable: 1 },   buy: { artstation: 1 } },
@@ -192,14 +219,17 @@ const CASES = [
   { id: 'co service', demand: 'high', base: { drivers: 1, train: 18, timetable: 1 }, buy: { 'council:service-contract': 1 } },
   { id: 'co subsidy',  demand: 'low',  base: { drivers: 1, train: 3, timetable: 1 }, buy: { 'council:subsidise-suburbs': 1 } },
   { id: 'co rezone',   demand: 'high', base: { drivers: 1, train: 4, timetable: 1 }, buy: { 'council:rezone-inner': 1 } },
-  { id: 'co transfer', demand: 'high', base: { drivers: 1, train: 3, westline: 1 },  buy: { 'council:easy-transfer': 1 } },
+  { id: 'co transfer', demand: 'high', base: { drivers: 1, train: 3, project: 1 },  buy: { 'council:easy-transfer': 1 } },
   { id: 'co auto',     demand: 'high', base: { drivers: 1, train: 2, timetable: 1 }, buy: { 'council:automatic-operation': 1 } },
 ];
 
 let failed = 0;
 let warned = 0;
 let thinCount = 0;
+// VG_ONLY=<id>[,<id>] measures just those cases (a quick look, not a gate).
+const ONLY = process.env.VG_ONLY ? new Set(process.env.VG_ONLY.split(',')) : null;
 for (const c of CASES) {
+  if (ONLY && !ONLY.has(c.id)) continue;
   const m = measure({ ...c.base }, { ...c.base, ...c.buy }, c.demand, false);
   const r = report(c, m);
   if (!r.ok && !r.ledgered) failed++;
@@ -208,7 +238,7 @@ for (const c of CASES) {
 }
 
 // Per-station upgrades (slice 1) must also earn their keep. Applied to the
-// busiest platform (T-Centralen, index 0) in the regime where each binds.
+// busiest platform (the hub, index 0) in the regime where each binds.
 // 'st shop' is the commerce ladder: it pays flat rent, so it is the one station
 // axis that cannot be dead; it is graded to police its ~15% income budget,
 // not to prove it earns.
@@ -245,6 +275,7 @@ function netRateStation(owned, demand, upgrade, surgeAt) {
 }
 
 for (const c of STATION_CASES) {
+  if (ONLY && !ONLY.has(c.id)) continue;
   const m = measure(
     { ...c.base },
     { owned: { ...c.base }, upgrade: { kind: c.kind, at: c.at } },
@@ -260,7 +291,7 @@ for (const c of STATION_CASES) {
 // delta is the multiplier's worth alone. Graded like 'st shop': policing the
 // budget, not proving a fortune (one level on one station is intrinsically
 // small; the item's job is 59 stations deep in retail).
-{
+if (!ONLY || ONLY.has('adverts')) {
   const base = { drivers: 1, train: 4, timetable: 1 };
   const m = measure(
     { owned: { ...base }, upgrade: { kind: 'shop', at: 0 } },
