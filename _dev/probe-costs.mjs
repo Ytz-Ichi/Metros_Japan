@@ -19,7 +19,7 @@
 //                                         # income comparisons meaningless
 import * as sim from '../src/sim.js';
 const { ANCHORS, CORRIDORS } = sim;
-import { wouldBuyTrain } from './probe-policy.mjs';
+import { wouldBuyTrain, nextExtension as nextExtensionFor } from './probe-policy.mjs';
 
 const HORIZON = Number(process.argv[2]) || 7200;
 const RICH = process.argv.includes('rich');
@@ -47,22 +47,7 @@ function fmt(n) { return Math.round(n).toLocaleString('en-US'); }
 // competence, not an optimum. Kept in lockstep with probe-arc by hand; if the
 // two drift the pacing and cost reports stop describing the same player. ---
 function nextExtension() {
-  const used = sim.usedAnchorsAll(g);
-  for (const c of CORRIDORS) {
-    for (const k of c.anchors) {
-      if (used.has(k) || !sim.anchorRevealed(g, k)) continue;
-      let best = null;
-      for (let li = 0; li < g.lines.length; li++) {
-        for (const end of ['head', 'tail']) {
-          if (sim.placementProblem(g, li, end, ANCHORS[k].geo, k)) continue;
-          const cost = sim.extensionCost(g, li, end, ANCHORS[k].geo, k);
-          if (!best || cost < best.cost) best = { li, end, cost, k };
-        }
-      }
-      if (best) return best;
-    }
-  }
-  return null;
+  return nextExtensionFor(sim, g);
 }
 
 function cheapestStationUpgrade() {

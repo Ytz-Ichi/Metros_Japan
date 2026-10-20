@@ -546,6 +546,7 @@ export function makeStrings({ B, CAT, money, rate }) {
     upkeepQuote: (r) => ' 維持費はおよそ ' + r + ' 増える。',
     eraEta: (min) => '（このカバー率で約 ' + min + ' 分）',
     gates: { head: (year) => year + ' 年まで', riders: '乗客', trust: '信頼', plan: '計画' },
+    eraTrustWarn: '買うと次の時代に必要な信頼を下回る',
     qtyMax: '最大',
     hud: {
       fares: (r) => '運賃 +' + r,

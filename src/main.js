@@ -722,7 +722,8 @@ function councilCard(d) {
       STR.councilShort + ' ' + Math.ceil(d.pk - g.pk) + ' ' + STR.councilMoreTrust +
       '</span><span>' + catWord + '</span></div>';
   } else {
-    foot = '<div class="tb-dec__foot"><span>' + STR.councilNow + '</span><span>' + catWord + '</span></div>';
+    foot = '<div class="tb-dec__foot"><span>' + (eatsEraTrust(d.pk) ? STR.eraTrustWarn : STR.councilNow) +
+      '</span><span>' + catWord + '</span></div>';
   }
   return '<button class="tb-dec" data-dec="' + d.id + '" data-state="' + visual + '">' +
     '<div class="tb-dec__head"><span class="tb-dec__glyph">' + glyph + '</span>' +
@@ -1829,6 +1830,7 @@ function updateStationPanel() {
       ? STR.tierEraGate
       : STR.tierUp[st.tier] + ' · ' + money(cost.kr) + (cost.pk ? ' + ' + STR.trust + ' ' + cost.pk : '');
     tierBtn.disabled = !sim.canUpgradeStation(g, selected.li, selected.i, 'tier');
+    if (cost.pk && eatsEraTrust(cost.pk)) tierBtn.title += ' · ' + STR.eraTrustWarn;
   }
   stationUpgRow('ent');
   stationUpgRow('gates');
@@ -3086,6 +3088,9 @@ function updateShop() {
     } else if (gated) {
       left.className = 'tb-shop__gate';
       left.textContent = STR.needsDrivers;
+    } else if (isPk && item.kind !== 'project' && affordable && eatsEraTrust(cost)) {
+      left.className = 'tb-shop__short';
+      left.textContent = STR.eraTrustWarn;
     } else if (short > 0) {
       left.className = 'tb-shop__short';
       left.textContent = STR.need + ' ' + price(short) + ' ' + STR.more;
@@ -3164,6 +3169,16 @@ function popNum(el) {
   el.classList.remove('tb-num--pop');
   void el.offsetWidth;
   el.classList.add('tb-num--pop');
+}
+
+// Would spending this much trust leave less than the next era asks? Hubs,
+// signalling and through-running are bought with the same trust the era
+// gate wants, and every hub costs more than the last; M3's measurement
+// (probe-arc build vs reserve) found that buying them as soon as affordable
+// held each late era back by 20 to 35 minutes. So the button says so.
+function eatsEraTrust(pk) {
+  const next = sim.nextEra(g);
+  return !!next && g.pk - pk < next.pk;
 }
 
 // The next era's gates as three bars (spec 01 §4 proposal 5): riders,

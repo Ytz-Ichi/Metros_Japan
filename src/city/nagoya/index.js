@@ -95,19 +95,30 @@ export default {
       anchors: ['narukokita', 'aioiyama', 'kamisawa', 'tokushige'],
       tease: { from: [35.1024, 136.9555], to: [35.103, 136.962], label: '徳重へ · 2011', labelAt: [35.1060, 136.9640] } },
   ],
-  // Gates are the original game's (🎮), to be measured (spec 02 §1).
-  // First measurement, probe-arc 7200 quiet at the pack split (2026-10-20):
-  // 1965 @ 708 s, 1971 @ 1593 s, 1977 @ 3808 s, 1989 @ 5740 s, and 2011
-  // still waiting on trust at two hours (27 of 90). Fifteen dead zones from
-  // t=2724 on, against fourteen for the original game under the same bot
-  // (whose run the Stockholm pack reproduces exactly). Tuning is M3's.
+  // The gates, measured (M3, 2026-10-20). The original game's table (🎮,
+  // spec 02 §1) held the late eras on TRUST for 20 to 35 minutes after
+  // their plans were built: probe-arc 7200 reached 1989 at 5923 s and never
+  // 2011. Two causes, both measured. The 'build' bot buys a hub every time
+  // trust reaches its price (8, 14, 23, 39, 67), so the hub ladder, not the
+  // era, set the pace; the 'reserve' bot (keeps the next era's trust in
+  // hand, like a player reading the era panel) then showed the RIDER gates
+  // landing 8, 7 and 18 minutes after each plan. The gates now sit just
+  // past each plan's completion, per spec 01 §5.4 (wait <= 5 min):
+  //   reserve 5400: 1965 @ 708, 1971 @ 1504, 1977 @ 2086, 1989 @ 3078,
+  //     2011 @ 3469; plan-to-gate waits 161 / 0 / 160 / 177 / 271 s; no
+  //     dead zone before t=4023 (after the sandbox opens).
+  //   build 7200: 2011 @ 4860 (was never); one dead zone in the first hour
+  //     (was two, thirteen over the two hours against twelve now).
+  // Candidates tried: 25/230k-50/440k-90/780k (the original), 20/165k-
+  // 30/330k-40/430k (2011 waited 361 s), 20/170k-35/350k-45/460k (539 s),
+  // 22/180k-40/380k-50/520k (342 and 627 s).
   eras: [
     { year: 1957, key: '1957', color: C.higashiyama },
     { year: 1965, key: '1965', color: C.meijo, pk: 5, delivered: 20000 },
     { year: 1971, key: '1971', color: C.meijo, pk: 12, delivered: 80000 },
-    { year: 1977, key: '1977', color: C.tsurumai, pk: 25, delivered: 230000 },
-    { year: 1989, key: '1989', color: C.sakuradori, pk: 50, delivered: 440000 },
-    { year: 2011, key: '2011', color: C.kamiiida, pk: 90, delivered: 780000 },
+    { year: 1977, key: '1977', color: C.tsurumai, pk: 20, delivered: 165000 },
+    { year: 1989, key: '1989', color: C.sakuradori, pk: 30, delivered: 330000 },
+    { year: 2011, key: '2011', color: C.kamiiida, pk: 35, delivered: 400000 },
   ],
   // Every seed has one existing end (栄・金山・伏見・名古屋・平安通), so no
   // charter opens as an orphan the way Stockholm's red line does.

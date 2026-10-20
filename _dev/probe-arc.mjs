@@ -12,7 +12,7 @@
 //   node _dev/probe-arc.mjs 900 quiet   # summary only
 import * as sim from '../src/sim.js';
 const { ANCHORS, CORRIDORS } = sim;
-import { wouldBuyTrain } from './probe-policy.mjs';
+import { wouldBuyTrain, nextExtension as nextExtensionFor } from './probe-policy.mjs';
 
 const HORIZON = Number(process.argv[2]) || 1200;
 const QUIET = process.argv.includes('quiet');
@@ -23,7 +23,34 @@ const QUIET = process.argv.includes('quiet');
 // asks of a player (the map is the progress bar) and what any payback-aware
 // player does, since a new station adds demand the upgrades then multiply.
 const POLICY = process.argv.includes('cheapest') ? 'cheapest' : 'build';
+// 'reserve': the player who reads the era panel. Trust spent on a hub, a
+// portal or a signalling upgrade must leave the next era's price in hand;
+// charters are exempt (the plan needs them). Measured beside 'build' for M3,
+// because 'build' buys a hub every time trust reaches its price and so
+// reports the hub ladder, not the era gates, as the late game's pace.
+const RESERVE = process.argv.includes('reserve');
+function trustSpare(cost) {
+  if (!RESERVE) return true;
+  const e = sim.nextEra(g);
+  return !e || g.pk - cost >= e.pk;
+}
 const DT = 0.05;
+
+// Tuning affordance (M3): ERAS="5:20000,12:80000,..." replaces the gates of
+// eras 1..n for this run only, so candidate tables can be measured side by
+// side without editing the pack between runs.
+if (process.env.ERAS) {
+  process.env.ERAS.split(',').forEach((kv, i) => {
+    const [pk, delivered] = kv.split(':').map(Number);
+    const e = sim.ERAS[i + 1];
+    if (!e) throw new Error('ERAS override names era ' + (i + 1) + ', which does not exist');
+    e.pk = pk;
+    e.delivered = delivered;
+  });
+  console.log('ERAS override: ' + sim.ERAS.slice(1).map((e) => e.year + ' ' + e.pk + ' pk / ' + e.delivered).join(' · '));
+}
+// 'trace' prints riders and trust every 60 s: the curve the gates sit on.
+const TRACE = process.argv.includes('trace');
 
 const g = sim.newGame();
 const log = [];        // {t, kind, what, cost, money}
@@ -39,35 +66,7 @@ function fmt(n) { return Math.round(n).toLocaleString('en-US'); }
 // that is not maxed. Deliberately NOT optimal: it is a floor on how well the
 // pacing must hold up, since a real player is slower and less tidy.
 function nextExtension() {
-  // The plan's own stakes (spec 01 §3.2): a stop on new ground goes from the
-  // nearest legal end; a stop the corridor passes THROUGH, or a ring's
-  // closing point, must be built by the corridor's own line, from the end
-  // that touches the stop before it. (Built anchors are never re-bought as
-  // junction shares otherwise: the 2026-08-07 plan-gate measurement spent
-  // an hour grading a bot that double-tracked every corridor stop.)
-  for (const s of sim.planStakes(g)) {
-    const k = s.anchor;
-    if (s.via || s.close) {
-      if (s.line === null || !g.lines[s.line] || g.lines[s.line].loop) continue;
-      const L = g.lines[s.line];
-      const end = s.close ? (L.stations[0].anchor === k ? 'tail' : 'head')
-        : s.prev !== null && L.stations[0].anchor === s.prev ? 'head' : 'tail';
-      if (sim.placementProblem(g, s.line, end, ANCHORS[k].geo, k)) continue;
-      return { li: s.line, end, cost: sim.extensionCost(g, s.line, end, ANCHORS[k].geo, k), k };
-    }
-    // Which line should take it: the one whose end is nearest.
-    let best = null;
-    for (let li = 0; li < g.lines.length; li++) {
-      if (g.lines[li].loop) continue;
-      for (const end of ['head', 'tail']) {
-        if (sim.placementProblem(g, li, end, ANCHORS[k].geo, k)) continue;
-        const cost = sim.extensionCost(g, li, end, ANCHORS[k].geo, k);
-        if (!best || cost < best.cost) best = { li, end, cost, k };
-      }
-    }
-    if (best) return best;
-  }
-  return null;
+  return nextExtensionFor(sim, g);
 }
 
 // Per-station upgrades are most of the purchase surface (three axes x every
@@ -83,7 +82,7 @@ function cheapestStationUpgrade() {
         // Trust-priced tier 3 IS worth buying: it unlocks the deep ladders. The
         // first version skipped it and then reported dead zones while sitting on
         // 89 trust and 81 available upgrades, measuring its own policy.
-        if (c.pk && g.pk < c.pk) continue;
+        if (c.pk && (g.pk < c.pk || !trustSpare(c.pk))) continue;
         if (!best || c.kr < best.cost) best = { li, i, kind, cost: c.kr, name: g.lines[li].stations[i].name };
       }
     }
@@ -99,6 +98,7 @@ function cheapestBuy() {
     // definition probe-arc and probe-costs share.
     if (item.id === 'train' && !wouldBuyTrain(sim, g)) continue;
     const cost = sim.shopCost(g, item.id);
+    if (item.currency === 'pk' && item.kind !== 'project' && !trustSpare(cost)) continue;
     // pk and kr are not comparable; treat a trust project as always worth it
     // (they are one-shot unlocks and the player wants them).
     const rank = item.currency === 'pk' ? -1 : cost;
@@ -131,18 +131,22 @@ for (let t = 0; t < HORIZON; t += DT) {
     options.sort((a, b) => (a.isExt ? -1 : 0) - (b.isExt ? -1 : 0));
   }
   let did = null;
+  const pkBefore = g.pk;
   for (const o of options) { did = o.run(); if (did) break; }
+  if (did && g.pk < pkBefore - 1e-9) did.pk = pkBefore - g.pk;
   if (did) {
     gaps.push(t - lastBuyAt);
     lastBuyAt = t;
     log.push({ t, ...did, money: g.money });
   }
 
-  // Gate milestones, once a second: when does each condition for the NEXT era
-  // first go green? The spread between them is the wait, and its name is the
-  // balance question (owner direction 2026-08-07: an active early player
-  // should wait on money, never on trust).
-  if (Math.round(t * 20) % 20 === 0) {
+  // Gate milestones: when does each condition for the NEXT era first go
+  // green? The spread between them is the wait, and its name is the balance
+  // question (owner direction 2026-08-07: an active early player should wait
+  // on money, never on trust). Checked every tick, not once a second: the
+  // era advances the very tick its last gate opens, so a once-a-second look
+  // missed whichever gate closed in between and reported it as "never".
+  {
     const e2 = sim.nextEra(g);
     if (e2) {
       const k = e2.year;
@@ -151,6 +155,11 @@ for (let t = 0; t < HORIZON; t += DT) {
       if (gateAt[k].trust === undefined && g.pk >= e2.pk) gateAt[k].trust = t;
       if (gateAt[k].plan === undefined && sim.planBlockers(g).length === 0) gateAt[k].plan = t;
     }
+  }
+
+  if (TRACE && Math.round(t * 20) % 1200 === 0) {
+    console.log('trace t=' + Math.round(t) + ' era=' + sim.eraYear(g) + ' riders=' + Math.round(g.totalDelivered) +
+      ' pk=' + g.pk.toFixed(1) + ' plan=' + sim.planBlockers(g).length);
   }
 
   // Advance the era as soon as it is allowed: the story should not wait.
@@ -167,7 +176,8 @@ if (!QUIET) {
     console.log(
       String(Math.round(e.t)).padStart(5) + '  ' +
       e.kind.padEnd(6) + '  ' + String(e.what).padEnd(22) + '  ' +
-      fmt(e.cost).padStart(9) + '  ' + fmt(e.money).padStart(10)
+      fmt(e.cost).padStart(9) + '  ' + fmt(e.money).padStart(10) +
+      (e.pk ? '  -' + e.pk.toFixed(1) + ' pk' : '')
     );
   }
 }
@@ -184,7 +194,7 @@ for (const e of buys) {
 }
 if (HORIZON - prev > 120) dead.push([prev, HORIZON]);
 
-console.log('\n--- pacing over ' + HORIZON + 's, policy: ' + POLICY + ' ---');
+console.log('\n--- pacing over ' + HORIZON + 's, policy: ' + POLICY + (RESERVE ? ' + reserve' : '') + ' ---');
 console.log('actions: ' + buys.length + ' (' + (buys.length / (HORIZON / 60)).toFixed(1) + ' per minute)');
 console.log('gap between actions: median ' + q(0.5).toFixed(0) + 's · p75 ' + q(0.75).toFixed(0) +
   's · p90 ' + q(0.9).toFixed(0) + 's · worst ' + q(1).toFixed(0) + 's');
